@@ -3,11 +3,12 @@ import google.generativeai as genai
 import datetime
 import random
 import pandas as pd
+import requests
 
 # ==========================================
 # CẤU HÌNH HỆ THỐNG & AI
 # ==========================================
-API_KEY = "AIzaSyDgQ2-nIrQoJZIG_mCXlTNZw-h6IdaZDpo"
+API_KEY = st.secrets["API_KEY"]
 genai.configure(api_key=API_KEY)
 
 ten_mo_hinh = 'gemini-1.0-pro'
@@ -22,24 +23,51 @@ model = genai.GenerativeModel(ten_mo_hinh)
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 
 # ==========================================
-# CƠ SỞ DỮ LIỆU & TÀI KHOẢN (RBAC)
+# KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
 # ==========================================
-if 'users' not in st.session_state:
-    st.session_state['users'] = {
-        'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
-        'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'GV01 - Cô Lan (Tâm lý)'},
-        'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'GV02 - Thầy Bình (Kỷ luật)'},
-        'gv03': {'pass': '3333', 'role': 'teacher', 'name': 'GV03 - Cô Hoa (Sức khỏe)'},
-        'gv04': {'pass': '4444', 'role': 'teacher', 'name': 'GV04 - Thầy Tuấn (Đoàn Đội)'},
-        'gv05': {'pass': '5555', 'role': 'teacher', 'name': 'GV05 - Cô Mai (Học tập)'}
+FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
+
+def tai_du_lieu_tu_may():
+    try:
+        r = requests.get(f"{FIREBASE_URL}/he_thong.json")
+        if r.status_code == 200 and r.json():
+            return r.json()
+    except: pass
+    return None
+
+def luu_du_lieu_len_may():
+    du_lieu_dong_bo = {
+        'users': st.session_state['users'],
+        'database': st.session_state['database']
     }
+    try:
+        requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo)
+    except: pass
 
-if 'current_user' not in st.session_state:
-    st.session_state['current_user'] = None
+# ==========================================
+# KHỞI TẠO CƠ SỞ DỮ LIỆU CHÍNH
+# ==========================================
+if 'he_thong_da_khoi_dong' not in st.session_state:
+    du_lieu_dam_may = tai_du_lieu_tu_may()
+    
+    if du_lieu_dam_may:
+        st.session_state['users'] = du_lieu_dam_may.get('users', {})
+        st.session_state['database'] = du_lieu_dam_may.get('database', {})
+    else:
+        # Nếu kho Google trống rỗng (chạy lần đầu tiên), tạo dữ liệu gốc
+        st.session_state['users'] = {
+            'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
+            'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Hoàng Anh (Sinh học)'},
+            'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'Cô Phương (Toán)'},
+            'gv03': {'pass': '3333', 'role': 'teacher', 'name': 'Thầy Cường (Đoàn Đội)'},
+            'gv04': {'pass': '4444', 'role': 'teacher', 'name': 'Cô Yến (Tâm lý)'}
+        }
+        st.session_state['database'] = {}
+        luu_du_lieu_len_may() # Bắn dữ liệu gốc lên Google
+        
+    st.session_state['he_thong_da_khoi_dong'] = True
 
-if 'database' not in st.session_state:
-    st.session_state['database'] = {}
-
+if 'current_user' not in st.session_state: st.session_state['current_user'] = None
 danh_sach_gv = {k: v['name'] for k, v in st.session_state['users'].items() if v['role'] == 'teacher'}
 
 # ==========================================
@@ -59,12 +87,10 @@ tab_hoc_sinh, tab_giao_vien, tab_quan_ly = st.tabs([
 # ==========================================
 with tab_hoc_sinh:
     col_gui, col_xem = st.columns(2)
-    
     with col_gui:
         st.header("💌 Kết nối với Thầy Cô")
         st.info("Em có thể để trống lớp nếu muốn giấu kín hoàn toàn nhé!")
         hs_khoi_lop = st.text_input("Khối/Lớp của em (Không bắt buộc, VD: 12A1):")
-        
         gv_duoc_chon = st.selectbox("Em muốn tâm sự với thầy cô nào?", options=list(danh_sach_gv.keys()), format_func=lambda x: danh_sach_gv[x])
         tam_su_input = st.text_area("Hôm nay em gặp chuyện gì? Hãy kể chi tiết nhé:", height=120)
         
@@ -80,15 +106,14 @@ with tab_hoc_sinh:
                     "muc_do_rui_ro": "Chờ AI phân tích",
                     "trang_thai": "Chờ xử lý"
                 }
+                luu_du_lieu_len_may() # Tự động sao lưu
                 st.success(f"✅ Gửi thành công! Mã bí mật của em là: **{ma_bi_mat}**. (Nhớ chụp ảnh màn hình lại nhé!)")
-            else:
-                st.warning("Em hãy viết nội dung trước khi gửi.")
+            else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with col_xem:
         st.header("💬 Phòng Chat Riêng Tư")
         ma_tra_cuu = st.text_input("Nhập Mã bí mật hệ thống đã cấp cho em:")
-        if st.button("Truy cập phòng chat"):
-            st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
+        if st.button("Truy cập phòng chat"): st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
             
         if 'ca_dang_xem' in st.session_state and st.session_state['ca_dang_xem'] in st.session_state['database']:
             ca = st.session_state['database'][st.session_state['ca_dang_xem']]
@@ -106,11 +131,10 @@ with tab_hoc_sinh:
                     ca['tin_nhan'].append({"nguoi_gui": "Học sinh", "noi_dung": hs_phan_hoi})
                     ca['trang_thai'] = "HS vừa nhắn lại" 
                     ca['ai_phan_tich'] = None 
+                    luu_du_lieu_len_may() # Tự động sao lưu
                     st.rerun()
-            elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]:
-                st.warning("⏳ Thầy cô đang soạn tin nhắn trả lời em. Em quay lại sau ít phút nhé!")
-        elif 'ca_dang_xem' in st.session_state:
-            st.error("Không tìm thấy mã này. Em nhập đúng chưa?")
+            elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang soạn tin nhắn trả lời em. Em quay lại sau ít phút nhé!")
+        elif 'ca_dang_xem' in st.session_state: st.error("Không tìm thấy mã này. Em nhập đúng chưa?")
 
 # ==========================================
 # HÀM KIỂM TRA ĐĂNG NHẬP
@@ -166,25 +190,22 @@ with tab_giao_vien:
                             prompt = f"""Đọc lịch sử trò chuyện của học sinh:
                             {lich_su}
                             
-                            Hãy đóng vai là một Chuyên gia Tâm lý Học đường dày dặn kinh nghiệm. Phân tích ca tư vấn này thật sâu sắc theo ĐÚNG cấu trúc sau:
-                            
+                            Đóng vai là Chuyên gia Tâm lý Học đường, phân tích ca này theo ĐÚNG cấu trúc sau:
                             [RỦI RO TÂM LÝ]: (Bắt buộc chỉ ghi 1 từ: Thấp / Trung bình / Cao)
-                            
                             [1. PHÂN TÍCH ĐA CHIỀU]:
-                            - Góc độ tâm lý: (Phân tích tổn thương, cảm xúc cốt lõi của học sinh).
-                            - Góc độ môi trường/xã hội: (Đánh giá nguyên nhân sâu xa từ bạn bè, áp lực, bạo lực...).
-                            
-                            [2. HƯỚNG GIẢI QUYẾT THỰC TẾ]: (Gợi ý 2-3 bước giáo viên nên làm ngoài đời thực).
-                            
-                            [3. GỢI Ý SOẠN TIN NHẮN]: (Soạn 1 tin nhắn phản hồi thật ấm áp, thấu cảm để giáo viên gửi cho học sinh)."""
+                            - Tâm lý: (Tổn thương, cảm xúc cốt lõi).
+                            - Môi trường: (Nguyên nhân từ bạn bè, áp lực...).
+                            [2. HƯỚNG GIẢI QUYẾT]: (Gợi ý 2-3 bước giáo viên nên làm).
+                            [3. GỢI Ý SOẠN TIN NHẮN]: (Soạn 1 tin nhắn ấm áp, thấu cảm để gửi cho học sinh)."""
                             try:
                                 res = model.generate_content(prompt)
                                 ca['ai_phan_tich'] = res.text
                                 if "Cao" in res.text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
                                 elif "Trung bình" in res.text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                 else: ca['muc_do_rui_ro'] = "Thấp"
+                                luu_du_lieu_len_may() # Tự động sao lưu
                                 st.rerun()
-                            except Exception as e: st.error(f"Lỗi kết nối AI: {e}")
+                            except Exception as e: st.error(f"Lỗi AI: {e}")
                                 
                     if ca['ai_phan_tich']:
                         st.info(ca['ai_phan_tich'])
@@ -192,6 +213,7 @@ with tab_giao_vien:
                         if st.button("✅ Gửi trả lời", type="primary", key=f"gui_{ma_ca}"):
                             ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
                             ca['trang_thai'] = "GV đã phản hồi"
+                            luu_du_lieu_len_may() # Tự động sao lưu
                             st.rerun()
 
         st.markdown("---")
@@ -216,32 +238,30 @@ with tab_quan_ly:
                 ten_moi = c_edit1.text_input("Tên hiển thị mới:", value=st.session_state['users'][gv_can_sua]['name'])
                 pass_moi = c_edit2.text_input("Mật khẩu mới:", value=st.session_state['users'][gv_can_sua]['pass'])
                 c_btn1, c_btn2 = c_edit3.columns(2)
-                c_btn1.write("")
-                c_btn1.write("")
                 if c_btn1.button("💾 Lưu Sửa đổi"):
                     st.session_state['users'][gv_can_sua]['name'] = ten_moi
                     st.session_state['users'][gv_can_sua]['pass'] = pass_moi
+                    luu_du_lieu_len_may() # Tự động sao lưu
                     st.success("Cập nhật thành công!")
                     st.rerun()
-                c_btn2.write("")
-                c_btn2.write("")
                 if c_btn2.button("🗑️ Xóa GV này"):
                     del st.session_state['users'][gv_can_sua]
+                    luu_du_lieu_len_may() # Tự động sao lưu
                     st.warning(f"Đã xóa tài khoản {gv_can_sua}!")
                     st.rerun()
-            else: st.write("Hiện chưa có giáo viên nào.")
 
             st.markdown("---")
             st.write("👉 **2. THÊM MỚI GIÁO VIÊN TƯ VẤN:**")
             c_add1, c_add2, c_add3 = st.columns(3)
-            new_id = c_add1.text_input("Tên đăng nhập mới (VD: gv06)")
-            new_name = c_add2.text_input("Tên hiển thị (VD: Thầy Hoàng Anh)")
+            new_id = c_add1.text_input("Tên đăng nhập (VD: gv06)")
+            new_name = c_add2.text_input("Tên hiển thị (VD: Cô Ngọc)")
             new_pass = c_add3.text_input("Mật khẩu")
             if st.button("➕ Thêm Giáo viên", type="primary"):
                 if new_id and new_name and new_pass:
                     if new_id in st.session_state['users']: st.error("Tên đăng nhập này đã tồn tại!")
                     else:
                         st.session_state['users'][new_id] = {'pass': new_pass, 'role': 'teacher', 'name': new_name}
+                        luu_du_lieu_len_may() # Tự động sao lưu
                         st.success("Đã thêm giáo viên thành công!")
                         st.rerun()
                 else: st.warning("Vui lòng điền đầy đủ thông tin.")
@@ -255,27 +275,17 @@ with tab_quan_ly:
         c_c.metric("Số lượng GV tham gia", f"{len(danh_sach_tai_khoan_gv)} người")
         
         if tong_ca > 0:
-            gv_counts = {}
-            for ca in st.session_state['database'].values():
-                ten_gv = st.session_state['users'][ca['gv_phu_trach']]['name']
-                gv_counts[ten_gv] = gv_counts.get(ten_gv, 0) + 1
-            st.write("**Biểu đồ phân bổ khối lượng công việc theo Giáo viên:**")
-            st.bar_chart(pd.DataFrame(list(gv_counts.items()), columns=['Giáo viên', 'Số ca']).set_index('Giáo viên'))
-            
             st.subheader("📥 Trích xuất Hồ sơ Tư vấn (Export Data)")
             du_lieu_xuat = []
             for ma_ca, ca in st.session_state['database'].items():
                 lich_su_chat = " | ".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
                 du_lieu_xuat.append({
-                    "Mã Ca": ma_ca,
-                    "Thời gian": ca['thoi_gian'],
-                    "Lớp": ca['lop'],
+                    "Mã Ca": ma_ca, "Thời gian": ca['thoi_gian'], "Lớp": ca['lop'],
                     "Giáo viên": st.session_state['users'][ca['gv_phu_trach']]['name'],
-                    "Rủi ro": ca['muc_do_rui_ro'],
-                    "Trạng thái": ca['trang_thai'],
+                    "Rủi ro": ca['muc_do_rui_ro'], "Trạng thái": ca['trang_thai'],
                     "Nội dung Chat": lich_su_chat
                 })
             df_export = pd.DataFrame(du_lieu_xuat)
             st.dataframe(df_export)
             csv = df_export.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 Tải xuống Báo cáo Tổng hợp (CSV/Excel)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")
+            st.download_button("📥 Tải xuống Báo cáo (CSV)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")

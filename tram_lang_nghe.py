@@ -262,5 +262,17 @@ with tab_quan_ly:
         c_b.metric("Ca Khẩn cấp (Cần BGH chú ý)", f"{ca_khan_cap} ca", delta="Nguy hiểm", delta_color="inverse")
         c_c.metric("Số lượng GV tham gia", f"{len(danh_sach_tai_khoan_gv)} người")
         
-        if tong_ca > 0:
-            st.subheader("📥 Trích xuất Hồ sơ Tư vấn (
+       if tong_ca > 0:
+            st.subheader("📥 Trích xuất Hồ sơ Tư vấn (Export Data)")
+            du_lieu_xuat = []
+            for ma_ca, ca in st.session_state['database'].items():
+                lich_su_chat = " | ".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
+                du_lieu_xuat.append({
+                    "Mã Ca": ma_ca, "Thời gian": ca['thoi_gian'], "Lớp": ca['lop'],
+                    "Giáo viên": st.session_state['users'][ca['gv_phu_trach']]['name'],
+                    "Rủi ro": ca['muc_do_rui_ro'], "Trạng thái": ca['trang_thai'],
+                    "Nội dung Chat": lich_su_chat
+                })
+            df_export = pd.DataFrame(du_lieu_xuat)
+            csv = df_export.to_csv(index=False).encode('utf-8-sig')
+            st.download_button("📥 Tải xuống Báo cáo (CSV)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")

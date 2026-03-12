@@ -11,9 +11,24 @@ import requests
 API_KEY = st.secrets["API_KEY"]
 genai.configure(api_key=API_KEY)
 
-model = genai.GenerativeModel('gemini-1.5-flash')
-st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
+# Bộ dò tìm AI tự động (Không bao giờ sợ lỗi 404)
+ten_ai = 'gemini-1.5-flash' # Tên dự phòng
+try:
+    danh_sach = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    if 'models/gemini-1.5-flash' in danh_sach:
+        ten_ai = 'models/gemini-1.5-flash'
+    elif 'models/gemini-1.5-pro' in danh_sach:
+        ten_ai = 'models/gemini-1.5-pro'
+    elif 'models/gemini-pro' in danh_sach:
+        ten_ai = 'models/gemini-pro'
+    elif len(danh_sach) > 0:
+        ten_ai = danh_sach[0] # Lấy đại AI đầu tiên nếu các tên trên bị Google đổi
+except:
+    pass
 
+model = genai.GenerativeModel(ten_ai)
+
+st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
 # ==========================================

@@ -11,7 +11,7 @@ import requests
 API_KEY = st.secrets["API_KEY"]
 genai.configure(api_key=API_KEY)
 
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 
 # ==========================================

@@ -1,34 +1,15 @@
 import streamlit as st
-import google.generativeai as genai
 import datetime
 import random
 import pandas as pd
 import requests
 
 # ==========================================
-# CẤU HÌNH HỆ THỐNG & AI
+# CẤU HÌNH HỆ THỐNG
 # ==========================================
 API_KEY = st.secrets["API_KEY"]
-genai.configure(api_key=API_KEY)
-
-# Bộ dò tìm AI tự động (Không bao giờ sợ lỗi 404)
-ten_ai = 'gemini-1.5-flash' # Tên dự phòng
-try:
-    danh_sach = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    if 'models/gemini-1.5-flash' in danh_sach:
-        ten_ai = 'models/gemini-1.5-flash'
-    elif 'models/gemini-1.5-pro' in danh_sach:
-        ten_ai = 'models/gemini-1.5-pro'
-    elif 'models/gemini-pro' in danh_sach:
-        ten_ai = 'models/gemini-pro'
-    elif len(danh_sach) > 0:
-        ten_ai = danh_sach[0] # Lấy đại AI đầu tiên nếu các tên trên bị Google đổi
-except:
-    pass
-
-model = genai.GenerativeModel(ten_ai)
-
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
+
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
 # ==========================================
@@ -61,7 +42,6 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
         st.session_state['users'] = du_lieu_dam_may.get('users', {})
         st.session_state['database'] = du_lieu_dam_may.get('database', {})
     else:
-        # Nếu kho Google trống rỗng (chạy lần đầu tiên), tạo dữ liệu gốc
         st.session_state['users'] = {
             'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
             'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Hoàng Anh (Sinh học)'},
@@ -70,7 +50,7 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
             'gv04': {'pass': '4444', 'role': 'teacher', 'name': 'Cô Yến (Tâm lý)'}
         }
         st.session_state['database'] = {}
-        luu_du_lieu_len_may() # Bắn dữ liệu gốc lên Google
+        luu_du_lieu_len_may()
         
     st.session_state['he_thong_da_khoi_dong'] = True
 
@@ -113,8 +93,8 @@ with tab_hoc_sinh:
                     "muc_do_rui_ro": "Chờ AI phân tích",
                     "trang_thai": "Chờ xử lý"
                 }
-                luu_du_lieu_len_may() # Tự động sao lưu
-                st.success(f"✅ Gửi thành công! Mã bí mật của em là: **{ma_bi_mat}**. (Nhớ chụp ảnh màn hình lại nhé!)")
+                luu_du_lieu_len_may()
+                st.success(f"✅ Gửi thành công! Mã bí mật của em là: **{ma_bi_mat}**")
             else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with col_xem:
@@ -138,7 +118,7 @@ with tab_hoc_sinh:
                     ca['tin_nhan'].append({"nguoi_gui": "Học sinh", "noi_dung": hs_phan_hoi})
                     ca['trang_thai'] = "HS vừa nhắn lại" 
                     ca['ai_phan_tich'] = None 
-                    luu_du_lieu_len_may() # Tự động sao lưu
+                    luu_du_lieu_len_may()
                     st.rerun()
             elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang soạn tin nhắn trả lời em. Em quay lại sau ít phút nhé!")
         elif 'ca_dang_xem' in st.session_state: st.error("Không tìm thấy mã này. Em nhập đúng chưa?")
@@ -162,7 +142,6 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         if role_can_thiet and user_info['role'] != role_can_thiet:
             st.error("🚫 Bạn không có quyền truy cập khu vực này!")
             return False
-            
         col_info, col_btn = st.columns([8, 2])
         col_info.write(f"👤 Đang đăng nhập: **{user_info['name']}**")
         if col_btn.button("🚪 Đăng xuất", key=f"logout_btn_{role_can_thiet}"):
@@ -194,25 +173,27 @@ with tab_giao_vien:
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
                         with st.spinner("AI đang phân tích đa chiều..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
-                            prompt = f"""Đọc lịch sử trò chuyện của học sinh:
-                            {lich_su}
+                            prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
-                            Đóng vai là Chuyên gia Tâm lý Học đường, phân tích ca này theo ĐÚNG cấu trúc sau:
-                            [RỦI RO TÂM LÝ]: (Bắt buộc chỉ ghi 1 từ: Thấp / Trung bình / Cao)
-                            [1. PHÂN TÍCH ĐA CHIỀU]:
-                            - Tâm lý: (Tổn thương, cảm xúc cốt lõi).
-                            - Môi trường: (Nguyên nhân từ bạn bè, áp lực...).
-                            [2. HƯỚNG GIẢI QUYẾT]: (Gợi ý 2-3 bước giáo viên nên làm).
-                            [3. GỢI Ý SOẠN TIN NHẮN]: (Soạn 1 tin nhắn ấm áp, thấu cảm để gửi cho học sinh)."""
                             try:
-                                res = model.generate_content(prompt)
-                                ca['ai_phan_tich'] = res.text
-                                if "Cao" in res.text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                elif "Trung bình" in res.text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                else: ca['muc_do_rui_ro'] = "Thấp"
-                                luu_du_lieu_len_may() # Tự động sao lưu
-                                st.rerun()
-                            except Exception as e: st.error(f"Lỗi AI: {e}")
+                                # GỌI TRỰC TIẾP API BỎ QUA THƯ VIỆN GOOGLE
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                                headers = {'Content-Type': 'application/json'}
+                                
+                                response = requests.post(url, json=payload, headers=headers)
+                                if response.status_code == 200:
+                                    res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                    ca['ai_phan_tich'] = res_text
+                                    if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                    elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                    else: ca['muc_do_rui_ro'] = "Thấp"
+                                    luu_du_lieu_len_may()
+                                    st.rerun()
+                                else:
+                                    st.error(f"Lỗi API: {response.text}")
+                            except Exception as e: 
+                                st.error(f"Lỗi hệ thống: {e}")
                                 
                     if ca.get('ai_phan_tich'):
                         st.info(ca.get('ai_phan_tich'))
@@ -220,7 +201,7 @@ with tab_giao_vien:
                         if st.button("✅ Gửi trả lời", type="primary", key=f"gui_{ma_ca}"):
                             ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
                             ca['trang_thai'] = "GV đã phản hồi"
-                            luu_du_lieu_len_may() # Tự động sao lưu
+                            luu_du_lieu_len_may()
                             st.rerun()
 
         st.markdown("---")
@@ -228,7 +209,7 @@ with tab_giao_vien:
         for ma_ca, ca in ca_da_phan_hoi.items():
             with st.expander(f"Ca {ma_ca} | Lớp: {ca['lop']} (Đã gửi tin nhắn)"):
                 with st.container(height=150, border=True):
-                    for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
+                        for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
 
 # ==========================================
 # TAB 3: TRUNG TÂM QUẢN LÝ (Chỉ Admin)
@@ -248,12 +229,12 @@ with tab_quan_ly:
                 if c_btn1.button("💾 Lưu Sửa đổi"):
                     st.session_state['users'][gv_can_sua]['name'] = ten_moi
                     st.session_state['users'][gv_can_sua]['pass'] = pass_moi
-                    luu_du_lieu_len_may() # Tự động sao lưu
+                    luu_du_lieu_len_may()
                     st.success("Cập nhật thành công!")
                     st.rerun()
                 if c_btn2.button("🗑️ Xóa GV này"):
                     del st.session_state['users'][gv_can_sua]
-                    luu_du_lieu_len_may() # Tự động sao lưu
+                    luu_du_lieu_len_may()
                     st.warning(f"Đã xóa tài khoản {gv_can_sua}!")
                     st.rerun()
 
@@ -268,7 +249,7 @@ with tab_quan_ly:
                     if new_id in st.session_state['users']: st.error("Tên đăng nhập này đã tồn tại!")
                     else:
                         st.session_state['users'][new_id] = {'pass': new_pass, 'role': 'teacher', 'name': new_name}
-                        luu_du_lieu_len_may() # Tự động sao lưu
+                        luu_du_lieu_len_may()
                         st.success("Đã thêm giáo viên thành công!")
                         st.rerun()
                 else: st.warning("Vui lòng điền đầy đủ thông tin.")
@@ -282,17 +263,4 @@ with tab_quan_ly:
         c_c.metric("Số lượng GV tham gia", f"{len(danh_sach_tai_khoan_gv)} người")
         
         if tong_ca > 0:
-            st.subheader("📥 Trích xuất Hồ sơ Tư vấn (Export Data)")
-            du_lieu_xuat = []
-            for ma_ca, ca in st.session_state['database'].items():
-                lich_su_chat = " | ".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
-                du_lieu_xuat.append({
-                    "Mã Ca": ma_ca, "Thời gian": ca['thoi_gian'], "Lớp": ca['lop'],
-                    "Giáo viên": st.session_state['users'][ca['gv_phu_trach']]['name'],
-                    "Rủi ro": ca['muc_do_rui_ro'], "Trạng thái": ca['trang_thai'],
-                    "Nội dung Chat": lich_su_chat
-                })
-            df_export = pd.DataFrame(du_lieu_xuat)
-            st.dataframe(df_export)
-            csv = df_export.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("📥 Tải xuống Báo cáo (CSV)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")
+            st.subheader("📥 Trích xuất Hồ sơ Tư vấn (

@@ -11,15 +11,7 @@ import requests
 API_KEY = st.secrets["API_KEY"]
 genai.configure(api_key=API_KEY)
 
-ten_mo_hinh = 'gemini-1.0-pro'
-try:
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            ten_mo_hinh = m.name
-            break
-except Exception: pass
-model = genai.GenerativeModel(ten_mo_hinh)
-
+model = genai.GenerativeModel('gemini-1.5-flash')
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 
 # ==========================================

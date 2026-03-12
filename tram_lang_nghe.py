@@ -140,4 +140,4 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
     else:
         user_info = st.session_state['users'][st.session_state['current_user']]
         if role_can_thiet and user_info['role'] != role_can_thiet:
-            st.
+            st.download_button("📥 Tải xuống Báo cáo (CSV)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")

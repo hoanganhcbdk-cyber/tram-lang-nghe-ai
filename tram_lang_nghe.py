@@ -11,7 +11,7 @@ import requests
 API_KEY = st.secrets["API_KEY"]
 genai.configure(api_key=API_KEY)
 
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 
 # ==========================================
@@ -199,8 +199,8 @@ with tab_giao_vien:
                                 st.rerun()
                             except Exception as e: st.error(f"Lỗi AI: {e}")
                                 
-                    if ca['ai_phan_tich']:
-                        st.info(ca['ai_phan_tich'])
+                    if ca.get('ai_phan_tich'):
+                        st.info(ca.get('ai_phan_tich'))
                         gv_tra_loi = st.text_area("Soạn tin nhắn trả lời học sinh:", height=80, key=f"txt_{ma_ca}")
                         if st.button("✅ Gửi trả lời", type="primary", key=f"gui_{ma_ca}"):
                             ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})

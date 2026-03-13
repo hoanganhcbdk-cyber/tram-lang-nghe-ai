@@ -176,25 +176,32 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
                     
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                        with st.spinner("Đang bắt bệnh lỗi hệ thống..."):
+                        with st.spinner("Đang đi qua cổng v1 mới nhất của Google..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
-                            prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích: Rủi ro, Phân tích, Giải quyết, Gợi ý tin nhắn."
+                            prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                response = requests.post(url, json=payload, headers=headers)
+                                # CHIẾN THUẬT CUỐI CÙNG: Đi cổng chính v1, gọi thẳng con 2.0-flash xịn nhất
+                                url_main = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={API_KEY}"
+                                response = requests.post(url_main, json=payload, headers=headers)
                                 
+                                # Chống cháy nếu con 2.0 bị lỗi, tự động gọi con 1.5 qua cổng v1
+                                if response.status_code == 404:
+                                    url_backup = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                                    response = requests.post(url_backup, json=payload, headers=headers)
+
                                 if response.status_code == 200:
                                     res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
                                     ca['ai_phan_tich'] = res_text
                                     if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
+                                elif response.status_code == 429:
+                                    ca['ai_phan_tich'] = "🚨 HẾT LƯỢT MIỄN PHÍ: Khóa API này đã hết lượt dùng. Cần đổi khóa từ Gmail khác."
                                 else:
-                                    # LỘT MẶT NẠ: IN RA NGUYÊN VĂN LỖI CỦA GOOGLE!
                                     ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
                                 
                                 luu_du_lieu_len_may()

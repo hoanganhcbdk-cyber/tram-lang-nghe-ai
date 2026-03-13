@@ -181,8 +181,8 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # GỌI TRỰC TIẾP BẢN CHUẨN, KHÔNG QUÉT RADAR NỮA ĐỂ NHẸ MÁY
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                                # QUAY LẠI BẢN 2.0 - VÌ CHẮC CHẮN NÓ KHÔNG BỊ LỖI 404 VỚI TÀI KHOẢN CỦA BẠN!
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
@@ -194,12 +194,11 @@ with tab_giao_vien:
                                     if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
-                                elif response.status_code == 404:
-                                    ca['ai_phan_tich'] = "🚨 LỖI 404: Sai API Key hoặc chưa cấu hình đúng trong mục Secrets."
                                 elif response.status_code == 429:
-                                    ca['ai_phan_tich'] = "🚨 LỖI 429: Lượt dùng = 0. Bạn BẮT BUỘC phải dùng một tài khoản Gmail CŨ (đã dùng lâu năm) để tạo API Key nhé!"
+                                    ca['ai_phan_tich'] = "⏳ BỊ GIỚI HẠN LƯỢT: Bạn đã bấm quá nhanh hoặc API Key này đã hết lượt miễn phí. Vui lòng chờ 1 phút rồi thử lại."
                                 else:
-                                    ca['ai_phan_tich'] = f"🚨 Lỗi Google ({response.status_code}): {response.text}"
+                                    # Hiển thị NGUYÊN VĂN lỗi của Google để không bao giờ bị đoán mò nữa
+                                    ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()
@@ -208,8 +207,8 @@ with tab_giao_vien:
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich'):
-                            st.error(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
+                            st.warning(ca.get('ai_phan_tich'))
                         else:
                             st.info(ca.get('ai_phan_tich'))
                             

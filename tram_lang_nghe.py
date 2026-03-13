@@ -184,9 +184,10 @@ with tab_giao_vien:
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                # THUẬT TOÁN CHỐNG LỖI 404: Tự động chạy dò tìm 3 phiên bản
-                                danh_sach_ai = ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
+                                # CHIẾN THUẬT MỚI: Ưu tiên bản 1.5-flash cực kỳ trâu bò (1500 lượt/ngày)
+                                danh_sach_ai = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
                                 da_xu_ly_xong = False
+                                ma_loi_cuoi = ""
                                 
                                 for ten_ai in danh_sach_ai:
                                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{ten_ai}:generateContent?key={API_KEY}"
@@ -199,17 +200,16 @@ with tab_giao_vien:
                                         elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                         else: ca['muc_do_rui_ro'] = "Thấp"
                                         da_xu_ly_xong = True
-                                        break  # Thành công thì dừng tìm kiếm
-                                        
-                                    elif response.status_code == 429:
-                                        ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG BẬN: Thầy/Cô đang thao tác rất nhanh. Xin vui lòng đợi khoảng 30 giây rồi bấm nút hỏi lại nhé!"
-                                        da_xu_ly_xong = True
-                                        break  # Báo bận thì cũng dừng lại luôn (không phải lỗi 404)
-                                        
-                                    # Nếu lỗi 404, code tự im lặng bỏ qua và vòng lặp chạy sang con AI tiếp theo!
+                                        break  # Thành công thì dừng lại ngay
+                                    else:
+                                        ma_loi_cuoi = str(response.status_code)
+                                        # Nếu lỗi, vòng lặp tự động lướt qua để thử con AI tiếp theo!
                                 
                                 if not da_xu_ly_xong:
-                                    ca['ai_phan_tich'] = "🚨 LỖI HỆ THỐNG GOOGLE: Tài khoản API của bạn đang không hỗ trợ các phiên bản AI hiện tại."
+                                    if "429" in ma_loi_cuoi:
+                                        ca['ai_phan_tich'] = "🚨 HẾT LƯỢT MIỄN PHÍ: Tài khoản Gmail này đã cạn kiệt số lần dùng AI trong ngày. Bạn BẮT BUỘC phải tạo API Key bằng 1 Gmail khác!"
+                                    else:
+                                        ca['ai_phan_tich'] = f"🚨 LỖI HỆ THỐNG GOOGLE ({ma_loi_cuoi}): Không thể kết nối AI lúc này."
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()
@@ -218,8 +218,8 @@ with tab_giao_vien:
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
-                            st.warning(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich'):
+                            st.error(ca.get('ai_phan_tich'))
                         else:
                             st.info(ca.get('ai_phan_tich'))
                             

@@ -176,52 +176,30 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
                     
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                        with st.spinner("Đang khởi động Radar dò tìm AI tương thích nhất..."):
+                        with st.spinner("AI đang phân tích đa chiều..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # BƯỚC 1: RADAR QUÉT CÁC MODEL AI MÀ API KEY NÀY ĐƯỢC PHÉP DÙNG
-                                url_list = f"https://generativelanguage.googleapis.com/v1beta/models?key={API_KEY}"
-                                res_list = requests.get(url_list)
+                                # GỌI TRỰC TIẾP BẢN CHUẨN, KHÔNG QUÉT RADAR NỮA ĐỂ NHẸ MÁY
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                                headers = {'Content-Type': 'application/json'}
                                 
-                                if res_list.status_code == 200:
-                                    danh_sach = res_list.json().get('models', [])
-                                    models_hop_le = [m['name'] for m in danh_sach if 'generateContent' in m.get('supportedGenerationMethods', [])]
-                                    
-                                    if not models_hop_le:
-                                        ca['ai_phan_tich'] = "🚨 LỖI TÀI KHOẢN: API Key của bạn bị khóa tính năng tạo văn bản."
-                                    else:
-                                        # BƯỚC 2: Chọn Model thông minh nhất từ danh sách quét được
-                                        model_chon = None
-                                        for m_uu_tien in ['models/gemini-1.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-pro']:
-                                            if m_uu_tien in models_hop_le:
-                                                model_chon = m_uu_tien
-                                                break
-                                        if not model_chon: model_chon = models_hop_le[0] # Lấy model đầu tiên tìm được
-                                        
-                                        # BƯỚC 3: YÊU CẦU MODEL ĐÓ PHÂN TÍCH
-                                        url_chat = f"https://generativelanguage.googleapis.com/v1beta/{model_chon}:generateContent?key={API_KEY}"
-                                        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-                                        headers = {'Content-Type': 'application/json'}
-                                        
-                                        res_chat = requests.post(url_chat, json=payload, headers=headers)
-                                        
-                                        if res_chat.status_code == 200:
-                                            res_text = res_chat.json()['candidates'][0]['content']['parts'][0]['text']
-                                            ca['ai_phan_tich'] = f"*(✅ Hệ thống tự động kết nối AI thành công)*\n\n" + res_text
-                                            if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                            elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                            else: ca['muc_do_rui_ro'] = "Thấp"
-                                        elif res_chat.status_code == 429:
-                                            ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG BẬN HOẶC HẾT LƯỢT MIỄN PHÍ: Xin vui lòng đợi 1 phút hoặc thay API Key mới!"
-                                        else:
-                                            ca['ai_phan_tich'] = f"🚨 LỖI KẾT NỐI AI ({res_chat.status_code}): {res_chat.text}"
-                                            
-                                elif res_list.status_code == 400 or res_list.status_code == 403:
-                                    ca['ai_phan_tich'] = f"🚨 LỖI API KEY ({res_list.status_code}): Chìa khóa bị sai hoặc copy nhầm. Hãy lấy đúng khóa ở aistudio.google.com!"
+                                response = requests.post(url, json=payload, headers=headers)
+                                
+                                if response.status_code == 200:
+                                    res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                    ca['ai_phan_tich'] = res_text
+                                    if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                    elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                    else: ca['muc_do_rui_ro'] = "Thấp"
+                                elif response.status_code == 404:
+                                    ca['ai_phan_tich'] = "🚨 LỖI 404: Sai API Key hoặc chưa cấu hình đúng trong mục Secrets."
+                                elif response.status_code == 429:
+                                    ca['ai_phan_tich'] = "🚨 LỖI 429: Lượt dùng = 0. Bạn BẮT BUỘC phải dùng một tài khoản Gmail CŨ (đã dùng lâu năm) để tạo API Key nhé!"
                                 else:
-                                    ca['ai_phan_tich'] = f"🚨 LỖI MÁY CHỦ GOOGLE ({res_list.status_code}): Không thể lấy danh sách AI lúc này."
+                                    ca['ai_phan_tich'] = f"🚨 Lỗi Google ({response.status_code}): {response.text}"
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()
@@ -230,8 +208,8 @@ with tab_giao_vien:
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
-                            st.warning(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich'):
+                            st.error(ca.get('ai_phan_tich'))
                         else:
                             st.info(ca.get('ai_phan_tich'))
                             

@@ -7,7 +7,13 @@ import requests
 # ==========================================
 # CẤU HÌNH HỆ THỐNG
 # ==========================================
-API_KEY = st.secrets["API_KEY"]
+# Dùng .strip() để xóa khoảng trắng thừa nếu lỡ copy nhầm
+try:
+    API_KEY = st.secrets["API_KEY"].strip()
+except:
+    st.error("❌ Chưa cấu hình API_KEY trong mục Secrets của Streamlit!")
+    st.stop()
+    
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Pro Max", page_icon="🏫", layout="wide")
 
 # ==========================================
@@ -176,7 +182,6 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # Dùng bản AI mới nhất và ổn định nhất của Google
                                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
@@ -191,8 +196,10 @@ with tab_giao_vien:
                                     else: ca['muc_do_rui_ro'] = "Thấp"
                                     luu_du_lieu_len_may()
                                     st.rerun()
+                                elif response.status_code == 404:
+                                    st.error("🚨 LỖI 404 (SAI CHÌA KHÓA): Mã API bạn đang dán KHÔNG PHẢI của Gemini (có thể bạn copy nhầm mã Firebase). Bạn phải vào aistudio.google.com để lấy mã chuẩn nhé!")
                                 elif response.status_code == 429:
-                                    st.error("🚨 LỖI QUOTA: Tài khoản API Key của bạn đã HẾT LƯỢT DÙNG MIỄN PHÍ. Vui lòng tạo API Key bằng tài khoản Gmail khác!")
+                                    st.error("🚨 LỖI QUOTA: API Key này đã hết lượt dùng miễn phí. Vui lòng lấy Gmail khác tạo API Key mới!")
                                 else:
                                     st.error(f"Lỗi hệ thống Google ({response.status_code}). Vui lòng thử lại sau.")
                             except Exception as e: 

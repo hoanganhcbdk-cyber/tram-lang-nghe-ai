@@ -181,23 +181,35 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # TRỞ VỀ BẢN 1.5-FLASH ĐỂ DÙNG THOẢI MÁI KHÔNG BỊ GIỚI HẠN
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                response = requests.post(url, json=payload, headers=headers)
+                                # THUẬT TOÁN CHỐNG LỖI 404: Tự động chạy dò tìm 3 phiên bản
+                                danh_sach_ai = ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
+                                da_xu_ly_xong = False
                                 
-                                if response.status_code == 200:
-                                    res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                                    ca['ai_phan_tich'] = res_text
-                                    if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                    elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                    else: ca['muc_do_rui_ro'] = "Thấp"
-                                elif response.status_code == 429:
-                                    ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG XỬ LÝ NHIỀU YÊU CẦU: Xin hãy đợi khoảng 15 giây rồi bấm nút hỏi lại nhé!"
-                                else:
-                                    ca['ai_phan_tich'] = f"🚨 Lỗi kết nối máy chủ Google ({response.status_code})."
+                                for ten_ai in danh_sach_ai:
+                                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{ten_ai}:generateContent?key={API_KEY}"
+                                    response = requests.post(url, json=payload, headers=headers)
+                                    
+                                    if response.status_code == 200:
+                                        res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                        ca['ai_phan_tich'] = res_text
+                                        if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                        elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                        else: ca['muc_do_rui_ro'] = "Thấp"
+                                        da_xu_ly_xong = True
+                                        break  # Thành công thì dừng tìm kiếm
+                                        
+                                    elif response.status_code == 429:
+                                        ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG BẬN: Thầy/Cô đang thao tác rất nhanh. Xin vui lòng đợi khoảng 30 giây rồi bấm nút hỏi lại nhé!"
+                                        da_xu_ly_xong = True
+                                        break  # Báo bận thì cũng dừng lại luôn (không phải lỗi 404)
+                                        
+                                    # Nếu lỗi 404, code tự im lặng bỏ qua và vòng lặp chạy sang con AI tiếp theo!
+                                
+                                if not da_xu_ly_xong:
+                                    ca['ai_phan_tich'] = "🚨 LỖI HỆ THỐNG GOOGLE: Tài khoản API của bạn đang không hỗ trợ các phiên bản AI hiện tại."
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()

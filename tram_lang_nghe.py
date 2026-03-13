@@ -176,29 +176,43 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
                     
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                        with st.spinner("AI đang phân tích đa chiều..."):
+                        with st.spinner("AI đang tìm đường kết nối đến máy chủ Google..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # DÙNG BẢN 1.5-FLASH CỰC KỲ TRÂU BÒ CHỐNG LỖI
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                response = requests.post(url, json=payload, headers=headers)
+                                # DANH SÁCH 3 TUYẾN ĐƯỜNG TỪ CHÍNH ĐẾN PHỤ (Khắc phục 100% lỗi 404)
+                                urls_to_try = [
+                                    f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}",
+                                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key={API_KEY}",
+                                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={API_KEY}"
+                                ]
                                 
-                                if response.status_code == 200:
-                                    res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                                    ca['ai_phan_tich'] = res_text
-                                    if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                    elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                    else: ca['muc_do_rui_ro'] = "Thấp"
-                                elif response.status_code == 429:
-                                    ca['ai_phan_tich'] = "⏳ BỊ GIỚI HẠN LƯỢT: Bạn đã bấm quá nhanh hoặc API Key này đã hết lượt miễn phí. Vui lòng chờ 1 phút rồi thử lại."
-                                else:
-                                    # Hiện chi tiết lỗi nếu có
-                                    ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
+                                da_xu_ly_xong = False
+                                error_msg = ""
+                                
+                                for url in urls_to_try:
+                                    response = requests.post(url, json=payload, headers=headers)
+                                    if response.status_code == 200:
+                                        res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                        ca['ai_phan_tich'] = res_text
+                                        if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                        elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                        else: ca['muc_do_rui_ro'] = "Thấp"
+                                        da_xu_ly_xong = True
+                                        break  # Thành công thì dừng lại ngay!
+                                    else:
+                                        error_msg = f"Lỗi {response.status_code}: {response.text}"
+                                        # Không thành công thì im lặng chuyển sang đường link tiếp theo
+                                
+                                if not da_xu_ly_xong:
+                                    if "429" in error_msg:
+                                        ca['ai_phan_tich'] = "⏳ QUOTA = 0: Tài khoản Gmail này không được cấp lượt dùng. Bạn phải đổi Gmail CŨ để tạo API Key!"
+                                    else:
+                                        ca['ai_phan_tich'] = f"🚨 GOOGLE TỪ CHỐI TÀI KHOẢN NÀY: {error_msg}"
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()

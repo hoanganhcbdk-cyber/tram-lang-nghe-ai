@@ -181,7 +181,8 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                                # NÂNG CẤP LÊN BẢN -latest ĐỂ CHỐNG LỖI 404 VỚI TÀI KHOẢN MỚI
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
@@ -194,14 +195,7 @@ with tab_giao_vien:
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
                                 else:
-                                    if response.status_code == 404:
-                                        ca['ai_phan_tich'] = "🚨 LỖI 404: Chìa khóa bạn dán KHÔNG PHẢI của Gemini (có thể bạn copy nhầm khóa Firebase). Hãy vào aistudio.google.com lấy mã mới!"
-                                    elif response.status_code == 429:
-                                        ca['ai_phan_tich'] = "🚨 LỖI QUOTA: API Key này đã hết lượt dùng miễn phí. Vui lòng tạo API Key bằng tài khoản Gmail khác."
-                                    elif response.status_code == 400:
-                                        ca['ai_phan_tich'] = "🚨 LỖI 400: Mã API Key bị sai cú pháp, dư khoảng trắng hoặc thiếu ký tự."
-                                    else:
-                                        ca['ai_phan_tich'] = f"🚨 Lỗi hệ thống Google ({response.status_code})."
+                                    ca['ai_phan_tich'] = f"🚨 Lỗi hệ thống Google ({response.status_code}): {response.text}"
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()

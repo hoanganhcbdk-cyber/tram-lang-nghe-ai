@@ -7,7 +7,6 @@ import requests
 # ==========================================
 # CẤU HÌNH HỆ THỐNG
 # ==========================================
-# Dùng .strip() để xóa khoảng trắng thừa nếu lỡ copy nhầm
 try:
     API_KEY = st.secrets["API_KEY"].strip()
 except:
@@ -194,19 +193,28 @@ with tab_giao_vien:
                                     if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
-                                    luu_du_lieu_len_may()
-                                    st.rerun()
-                                elif response.status_code == 404:
-                                    st.error("🚨 LỖI 404 (SAI CHÌA KHÓA): Mã API bạn đang dán KHÔNG PHẢI của Gemini (có thể bạn copy nhầm mã Firebase). Bạn phải vào aistudio.google.com để lấy mã chuẩn nhé!")
-                                elif response.status_code == 429:
-                                    st.error("🚨 LỖI QUOTA: API Key này đã hết lượt dùng miễn phí. Vui lòng lấy Gmail khác tạo API Key mới!")
                                 else:
-                                    st.error(f"Lỗi hệ thống Google ({response.status_code}). Vui lòng thử lại sau.")
+                                    if response.status_code == 404:
+                                        ca['ai_phan_tich'] = "🚨 LỖI 404: Chìa khóa bạn dán KHÔNG PHẢI của Gemini (có thể bạn copy nhầm khóa Firebase). Hãy vào aistudio.google.com lấy mã mới!"
+                                    elif response.status_code == 429:
+                                        ca['ai_phan_tich'] = "🚨 LỖI QUOTA: API Key này đã hết lượt dùng miễn phí. Vui lòng tạo API Key bằng tài khoản Gmail khác."
+                                    elif response.status_code == 400:
+                                        ca['ai_phan_tich'] = "🚨 LỖI 400: Mã API Key bị sai cú pháp, dư khoảng trắng hoặc thiếu ký tự."
+                                    else:
+                                        ca['ai_phan_tich'] = f"🚨 Lỗi hệ thống Google ({response.status_code})."
+                                
+                                luu_du_lieu_len_may()
+                                st.rerun()
+                                
                             except Exception as e: 
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        st.info(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich'):
+                            st.error(ca.get('ai_phan_tich'))
+                        else:
+                            st.info(ca.get('ai_phan_tich'))
+                            
                         gv_tra_loi = st.text_area("Soạn tin nhắn trả lời học sinh:", height=80, key=f"txt_{ma_ca}")
                         if st.button("✅ Gửi trả lời", type="primary", key=f"gui_{ma_ca}"):
                             ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})

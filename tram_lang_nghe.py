@@ -181,7 +181,8 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
+                                # TRỞ VỀ BẢN 1.5-FLASH ĐỂ DÙNG THOẢI MÁI KHÔNG BỊ GIỚI HẠN
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
@@ -194,7 +195,7 @@ with tab_giao_vien:
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
                                 elif response.status_code == 429:
-                                    ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG XỬ LÝ NHIỀU YÊU CẦU: Thầy/Cô đang thao tác rất nhanh. Vui lòng đợi khoảng 30 giây rồi bấm nút hỏi lại nhé!"
+                                    ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG XỬ LÝ NHIỀU YÊU CẦU: Xin hãy đợi khoảng 15 giây rồi bấm nút hỏi lại nhé!"
                                 else:
                                     ca['ai_phan_tich'] = f"🚨 Lỗi kết nối máy chủ Google ({response.status_code})."
                                 

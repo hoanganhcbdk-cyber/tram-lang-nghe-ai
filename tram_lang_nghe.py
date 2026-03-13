@@ -176,43 +176,26 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
                     
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                        with st.spinner("AI đang tìm đường chui qua tường lửa của Google..."):
+                        with st.spinner("Đang bắt bệnh lỗi hệ thống..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
-                            prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
+                            prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích: Rủi ro, Phân tích, Giải quyết, Gợi ý tin nhắn."
                             
                             try:
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                # CHIẾN THUẬT CUỐI CÙNG: Dùng gemini-pro (bản 1.0) không bao giờ bị khóa!
-                                danh_sach_ai = [
-                                    "gemini-1.5-flash", 
-                                    "gemini-pro",         # <-- "Cửa hậu" cứu mạng
-                                    "gemini-1.0-pro"
-                                ]
+                                response = requests.post(url, json=payload, headers=headers)
                                 
-                                da_xu_ly_xong = False
-                                
-                                for ten_ai in danh_sach_ai:
-                                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{ten_ai}:generateContent?key={API_KEY}"
-                                    response = requests.post(url, json=payload, headers=headers)
-                                    
-                                    if response.status_code == 200:
-                                        res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                                        ca['ai_phan_tich'] = f"*(Đã kết nối AI thành công qua {ten_ai})*\n\n" + res_text
-                                        if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                        elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                        else: ca['muc_do_rui_ro'] = "Thấp"
-                                        da_xu_ly_xong = True
-                                        break
-                                    elif response.status_code == 429:
-                                        ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG BẬN: Bạn đã hỏi quá nhanh. Vui lòng chờ 30 giây rồi thử lại."
-                                        da_xu_ly_xong = True
-                                        break
-                                    # Nếu gặp 404 thì im lặng bỏ qua, chạy tiếp con sau
-                                
-                                if not da_xu_ly_xong:
-                                    ca['ai_phan_tich'] = "🚨 TÀI KHOẢN BỊ KHÓA HOÀN TOÀN: Xin hãy dùng Gmail cá nhân bình thường (@gmail.com) để tạo API Key, không dùng mail trường học hay doanh nghiệp!"
+                                if response.status_code == 200:
+                                    res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                    ca['ai_phan_tich'] = res_text
+                                    if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                    elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                    else: ca['muc_do_rui_ro'] = "Thấp"
+                                else:
+                                    # LỘT MẶT NẠ: IN RA NGUYÊN VĂN LỖI CỦA GOOGLE!
+                                    ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()
@@ -221,8 +204,8 @@ with tab_giao_vien:
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
-                            st.warning(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich'):
+                            st.error(ca.get('ai_phan_tich'))
                         else:
                             st.info(ca.get('ai_phan_tich'))
                             

@@ -181,8 +181,8 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # QUAY LẠI BẢN 2.0 - VÌ CHẮC CHẮN NÓ KHÔNG BỊ LỖI 404 VỚI TÀI KHOẢN CỦA BẠN!
-                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
+                                # DÙNG BẢN 1.5-FLASH CỰC KỲ TRÂU BÒ CHỐNG LỖI
+                                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
@@ -197,7 +197,7 @@ with tab_giao_vien:
                                 elif response.status_code == 429:
                                     ca['ai_phan_tich'] = "⏳ BỊ GIỚI HẠN LƯỢT: Bạn đã bấm quá nhanh hoặc API Key này đã hết lượt miễn phí. Vui lòng chờ 1 phút rồi thử lại."
                                 else:
-                                    # Hiển thị NGUYÊN VĂN lỗi của Google để không bao giờ bị đoán mò nữa
+                                    # Hiện chi tiết lỗi nếu có
                                     ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
                                 
                                 luu_du_lieu_len_may()

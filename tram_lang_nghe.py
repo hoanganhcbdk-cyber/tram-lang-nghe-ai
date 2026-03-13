@@ -181,7 +181,6 @@ with tab_giao_vien:
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
-                                # Dùng bản AI mới nhất thế hệ 2.0 (Các dòng cũ đã bị Google khai tử)
                                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
@@ -194,8 +193,10 @@ with tab_giao_vien:
                                     if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
+                                elif response.status_code == 429:
+                                    ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG XỬ LÝ NHIỀU YÊU CẦU: Thầy/Cô đang thao tác rất nhanh. Vui lòng đợi khoảng 30 giây rồi bấm nút hỏi lại nhé!"
                                 else:
-                                    ca['ai_phan_tich'] = f"🚨 Lỗi hệ thống Google ({response.status_code}): {response.text}"
+                                    ca['ai_phan_tich'] = f"🚨 Lỗi kết nối máy chủ Google ({response.status_code})."
                                 
                                 luu_du_lieu_len_may()
                                 st.rerun()
@@ -204,8 +205,8 @@ with tab_giao_vien:
                                 st.error(f"Lỗi mạng: {e}")
                                 
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich'):
-                            st.error(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
+                            st.warning(ca.get('ai_phan_tich'))
                         else:
                             st.info(ca.get('ai_phan_tich'))
                             
@@ -288,3 +289,16 @@ with tab_quan_ly:
             df_export = pd.DataFrame(du_lieu_xuat)
             csv = df_export.to_csv(index=False).encode('utf-8-sig')
             st.download_button("📥 Tải xuống Báo cáo (CSV)", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")
+
+            # === TÍNH NĂNG MỚI: DỌN DẸP DỮ LIỆU ===
+            st.markdown("---")
+            st.subheader("🗑️ Dọn dẹp Hệ thống (Xóa ca test)")
+            st.warning("Chú ý: Dữ liệu sau khi xóa sẽ biến mất khỏi cơ sở dữ liệu và không thể khôi phục!")
+            danh_sach_ca = list(st.session_state['database'].keys())
+            ca_can_xoa = st.selectbox("Chọn mã ca cần xóa:", options=danh_sach_ca, format_func=lambda x: f"{x} - Lớp: {st.session_state['database'][x]['lop']} ({st.session_state['database'][x]['thoi_gian']})")
+            
+            if st.button("🚨 Xóa vĩnh viễn ca này"):
+                del st.session_state['database'][ca_can_xoa]
+                luu_du_lieu_len_may()
+                st.success(f"Đã dọn dẹp thành công hồ sơ {ca_can_xoa}!")
+                st.rerun()

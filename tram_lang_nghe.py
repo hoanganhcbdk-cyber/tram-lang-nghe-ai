@@ -23,7 +23,27 @@ except Exception as e:
     st.error(f"❌ Lỗi cấu hình Secrets: {e}")
     st.stop()
     
-st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide")
+st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="expanded")
+
+# ==========================================
+# 🔰 THANH BÊN (SIDEBAR) - THÔNG TIN BẢN QUYỀN
+# ==========================================
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712139.png", width=80) 
+    st.markdown("### 🔰 THÔNG TIN BẢN QUYỀN")
+    st.markdown("""
+    **Hệ thống Trạm Lắng Nghe AI** được phát triển nhằm mục đích hỗ trợ tư vấn tâm lý học đường, ứng dụng Trí tuệ nhân tạo thế hệ mới.
+    
+    👨‍💻 **Tác giả:** Thầy Lý Hoàng Anh
+    📍 **Đơn vị:** Hoàng Su Phì
+    📞 **Hotline/Zalo Tư vấn:** 0969969189
+    📧 **Email:** hoanganhcbdk@gmail.com
+    """)
+    st.markdown("---")
+    st.info("💡 **Chuyển giao công nghệ:**\nCác đơn vị nhà trường có nhu cầu cài đặt và sử dụng hệ thống này vui lòng liên hệ trực tiếp với tác giả để được hỗ trợ kỹ thuật và cấp phép.")
+    st.markdown("---")
+    st.caption("© 2026 Bản quyền thuộc về tác giả Lý Hoàng Anh. Mọi hành vi sao chép nền tảng không xin phép đều vi phạm bản quyền.")
+    st.success("Trạng thái máy chủ: Đang hoạt động 🟢")
 
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
@@ -59,7 +79,7 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
     else:
         st.session_state['users'] = {
             'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
-            'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Hoàng Anh (Sinh học)'},
+            'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Lý Hoàng Anh'},
             'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'Cô Phương (Toán)'},
             'gv03': {'pass': '3333', 'role': 'teacher', 'name': 'Thầy Cường (Đoàn Đội)'},
             'gv04': {'pass': '4444', 'role': 'teacher', 'name': 'Cô Yến (Tâm lý)'}
@@ -85,10 +105,9 @@ tab_hoc_sinh, tab_giao_vien, tab_quan_ly = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: CỔNG HỌC SINH (NÂNG CẤP)
+# TAB 1: CỔNG HỌC SINH 
 # ==========================================
 with tab_hoc_sinh:
-    # TÍNH NĂNG MỚI 1: TRẠM SƠ CỨU CẢM XÚC
     with st.expander("🆘 TRẠM SƠ CỨU TÂM LÝ KHẨN CẤP (Bấm vào đây nếu em đang rất hoảng loạn)"):
         st.error("**Nếu em đang có suy nghĩ làm hại bản thân hoặc đang gặp nguy hiểm:**\n\n📞 Hãy gọi ngay **Tổng đài Quốc gia Bảo vệ Trẻ em: 111** (Miễn phí 24/7)\n📞 Hoặc gọi cho người thân mà em tin tưởng nhất.")
         st.info("**Bài tập hít thở 4-7-8 giúp bình tĩnh lại:**\n1. Hít vào bằng mũi trong 4 giây.\n2. Giữ hơi thở trong 7 giây.\n3. Thở ra từ từ bằng miệng trong 8 giây.\n*(Hãy lặp lại 3 lần em nhé, thầy cô luôn ở đây để lắng nghe em!)*")
@@ -98,11 +117,8 @@ with tab_hoc_sinh:
         st.header("💌 Kết nối với Thầy Cô")
         st.info("Em có thể để trống lớp nếu muốn giấu kín hoàn toàn nhé!")
         hs_khoi_lop = st.text_input("Khối/Lớp của em (Không bắt buộc, VD: 12A1):")
-        
-        # TÍNH NĂNG MỚI 2: NHIỆT KẾ CẢM XÚC
         hs_cam_xuc = st.selectbox("Ngay lúc này, em đang cảm thấy thế nào?", 
                                   ["😐 Bình thường", "😔 Buồn bã, chán nản", "😰 Lo âu, căng thẳng", "😡 Tức giận, uất ức", "😭 Tuyệt vọng", "😊 Vui vẻ, nhẹ nhõm"])
-        
         gv_duoc_chon = st.selectbox("Em muốn tâm sự với thầy cô nào?", options=list(danh_sach_gv.keys()), format_func=lambda x: danh_sach_gv[x])
         tam_su_input = st.text_area("Hãy kể chi tiết câu chuyện của em nhé:", height=120)
         
@@ -121,7 +137,7 @@ with tab_hoc_sinh:
                 }
                 luu_du_lieu_len_may()
                 st.success(f"✅ Gửi thành công! Mã bí mật của em là: **{ma_bi_mat}**")
-                st.balloons() # Hiệu ứng bóng bay khích lệ học sinh
+                st.balloons() 
             else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with col_xem:
@@ -179,7 +195,7 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         return True
 
 # ==========================================
-# TAB 2: KHÔNG GIAN LÀM VIỆC CỦA GIÁO VIÊN (NÂNG CẤP BỘ LỌC)
+# TAB 2: KHÔNG GIAN LÀM VIỆC CỦA GIÁO VIÊN 
 # ==========================================
 with tab_giao_vien:
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
@@ -190,7 +206,6 @@ with tab_giao_vien:
         ca_cho_xu_ly = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]}
         ca_da_phan_hoi = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] == "GV đã phản hồi"}
         
-        # TÍNH NĂNG MỚI 3: BỘ LỌC KHẨN CẤP
         loc_ca = st.radio("Bộ lọc hiển thị:", ["Tất cả ca đang chờ", "Chỉ hiện ca Rủi ro Cao/Khẩn cấp"], horizontal=True)
         if loc_ca == "Chỉ hiện ca Rủi ro Cao/Khẩn cấp":
             ca_cho_xu_ly = {k: v for k, v in ca_cho_xu_ly.items() if "Cao" in v['muc_do_rui_ro']}
@@ -271,19 +286,18 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
 
 # ==========================================
-# TAB 3: TRUNG TÂM QUẢN LÝ (NÂNG CẤP BIỂU ĐỒ)
+# TAB 3: TRUNG TÂM QUẢN LÝ 
 # ==========================================
 with tab_quan_ly:
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
         st.header("⚙️ QUẢN TRỊ HỆ THỐNG TỔNG THỂ")
         
-        # TÍNH NĂNG MỚI 4: BIỂU ĐỒ THỐNG KÊ TRỰC QUAN
         st.subheader("📊 Bảng vàng Thống kê & Phân tích")
         tong_ca = len(st.session_state['database'])
         ca_khan_cap = len([ca for ca in st.session_state['database'].values() if "Cao" in ca['muc_do_rui_ro']])
         ca_tb = len([ca for ca in st.session_state['database'].values() if "Trung bình" in ca['muc_do_rui_ro']])
         ca_thap = len([ca for ca in st.session_state['database'].values() if "Thấp" in ca['muc_do_rui_ro']])
-        ca_cho = tong_ca - ca_khan_cap - ca_tb - ca_thap # Các ca chưa phân tích
+        ca_cho = tong_ca - ca_khan_cap - ca_tb - ca_thap 
         
         c_a, c_b, c_c = st.columns(3)
         c_a.metric("Tổng số ca đã tiếp nhận", f"{tong_ca} ca")
@@ -293,12 +307,10 @@ with tab_quan_ly:
         
         if tong_ca > 0:
             st.markdown("**Biểu đồ Phân bổ Mức độ Rủi ro Tâm lý toàn trường:**")
-            # Tạo dữ liệu biểu đồ
             chart_data = pd.DataFrame({
                 "Mức độ": ["Cao (Khẩn cấp)", "Trung bình", "Thấp", "Chưa phân tích"],
                 "Số lượng ca": [ca_khan_cap, ca_tb, ca_thap, ca_cho]
             })
-            # Hiển thị biểu đồ cột
             st.bar_chart(chart_data.set_index("Mức độ"), color="#ff4b4b")
 
         with st.expander("🛠 Quản lý Nhân sự (Thêm/Sửa/Xóa Giáo viên)"):

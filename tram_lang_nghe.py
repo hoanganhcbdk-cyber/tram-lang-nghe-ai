@@ -22,27 +22,27 @@ try:
 except Exception as e:
     st.error(f"❌ Lỗi cấu hình Secrets: {e}")
     st.stop()
-    
-st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="expanded")
+
+# SỬA LỖI ĐIỆN THOẠI: Chuyển initial_sidebar_state thành "auto" để tự động gập trên Mobile
+st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
 # ==========================================
 # 🔰 THANH BÊN (SIDEBAR) - THÔNG TIN BẢN QUYỀN
 # ==========================================
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712139.png", width=80) 
+    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712139.png", width=65) 
     st.markdown("### 🔰 THÔNG TIN BẢN QUYỀN")
     st.markdown("""
-    **Hệ thống Trạm Lắng Nghe AI** được phát triển nhằm mục đích hỗ trợ tư vấn tâm lý học đường, ứng dụng Trí tuệ nhân tạo thế hệ mới.
+    **Hệ thống Trạm Lắng Nghe AI** Ứng dụng Trí tuệ nhân tạo thế hệ mới hỗ trợ tư vấn tâm lý học đường.
     
     👨‍💻 **Tác giả:** Thầy Lý Hoàng Anh
     📍 **Đơn vị:** Hoàng Su Phì
-    📞 **Hotline/Zalo Tư vấn:** 0969969189
+    📞 **Hotline/Zalo:** 0969969189
     📧 **Email:** hoanganhcbdk@gmail.com
     """)
     st.markdown("---")
-    st.info("💡 **Chuyển giao công nghệ:**\nCác đơn vị nhà trường có nhu cầu cài đặt và sử dụng hệ thống này vui lòng liên hệ trực tiếp với tác giả để được hỗ trợ kỹ thuật và cấp phép.")
-    st.markdown("---")
-    st.caption("© 2026 Bản quyền thuộc về tác giả Lý Hoàng Anh. Mọi hành vi sao chép nền tảng không xin phép đều vi phạm bản quyền.")
+    st.info("💡 **Chuyển giao công nghệ:** Liên hệ trực tiếp với tác giả để được hỗ trợ cài đặt và cấp phép nền tảng.")
+    st.caption("© 2026 Bản quyền thuộc về tác giả Lý Hoàng Anh.")
     st.success("Trạng thái máy chủ: Đang hoạt động 🟢")
 
 # ==========================================

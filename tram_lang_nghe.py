@@ -22,8 +22,7 @@ try:
 except Exception as e:
     st.error(f"❌ Lỗi cấu hình Secrets: {e}")
     st.stop()
-
-# SỬA LỖI ĐIỆN THOẠI: Chuyển initial_sidebar_state thành "auto" để tự động gập trên Mobile
+    
 st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
 # ==========================================
@@ -202,6 +201,19 @@ with tab_giao_vien:
         user_id = st.session_state['current_user']
         st.header(f"Bảng điều khiển Tư vấn của {st.session_state['users'][user_id]['name']}")
         
+        # === TÍNH NĂNG MỚI: GIÁO VIÊN TỰ ĐỔI MẬT KHẨU ===
+        with st.expander("🔐 Quản lý Tài khoản (Đổi mật khẩu cá nhân)"):
+            new_pw = st.text_input("Nhập mật khẩu mới của bạn:", type="password", key=f"new_pw_{user_id}")
+            if st.button("💾 Lưu mật khẩu mới", key=f"save_pw_{user_id}"):
+                if new_pw:
+                    st.session_state['users'][user_id]['pass'] = new_pw
+                    luu_du_lieu_len_may()
+                    st.success("Đổi mật khẩu thành công! Hãy ghi nhớ mật khẩu mới nhé.")
+                else:
+                    st.warning("Vui lòng nhập mật khẩu mới trước khi lưu.")
+        
+        st.markdown("---")
+        
         ca_cua_toi = {k: v for k, v in st.session_state['database'].items() if v['gv_phu_trach'] == user_id}
         ca_cho_xu_ly = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]}
         ca_da_phan_hoi = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] == "GV đã phản hồi"}
@@ -286,7 +298,7 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
 
 # ==========================================
-# TAB 3: TRUNG TÂM QUẢN LÝ 
+# TAB 3: TRUNG TÂM QUẢN LÝ (THÊM BẢO MẬT)
 # ==========================================
 with tab_quan_ly:
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
@@ -313,19 +325,34 @@ with tab_quan_ly:
             })
             st.bar_chart(chart_data.set_index("Mức độ"), color="#ff4b4b")
 
-        with st.expander("🛠 Quản lý Nhân sự (Thêm/Sửa/Xóa Giáo viên)"):
-            st.write("👉 **1. SỬA HOẶC XÓA GIÁO VIÊN ĐANG CÓ:**")
+        with st.expander("🛠 Quản lý Nhân sự & Bảo mật (Thêm/Sửa/Xóa)"):
+            
+            # === TÍNH NĂNG MỚI: ADMIN ĐỔI MẬT KHẨU CỦA MÌNH ===
+            st.write("👉 **1. ĐỔI MẬT KHẨU TÀI KHOẢN ADMIN:**")
+            admin_id = st.session_state['current_user']
+            col_ad1, col_ad2 = st.columns([2, 1])
+            admin_new_pass = col_ad1.text_input("Nhập mật khẩu Admin mới:", type="password", key="admin_pw")
+            if col_ad2.button("🔑 Cập nhật mật khẩu Admin"):
+                if admin_new_pass:
+                    st.session_state['users'][admin_id]['pass'] = admin_new_pass
+                    luu_du_lieu_len_may()
+                    st.success("Đã đổi mật khẩu Admin thành công!")
+                else:
+                    st.warning("Vui lòng nhập mật khẩu mới!")
+            
+            st.markdown("---")
+            st.write("👉 **2. SỬA THÔNG TIN & RESET MẬT KHẨU GIÁO VIÊN:**")
             if danh_sach_tai_khoan_gv:
-                gv_can_sua = st.selectbox("Chọn tài khoản để chỉnh sửa:", options=danh_sach_tai_khoan_gv, format_func=lambda x: f"{x} ({st.session_state['users'][x]['name']})")
+                gv_can_sua = st.selectbox("Chọn tài khoản giáo viên để chỉnh sửa:", options=danh_sach_tai_khoan_gv, format_func=lambda x: f"{x} ({st.session_state['users'][x]['name']})")
                 c_edit1, c_edit2, c_edit3 = st.columns(3)
                 ten_moi = c_edit1.text_input("Tên hiển thị mới:", value=st.session_state['users'][gv_can_sua]['name'])
-                pass_moi = c_edit2.text_input("Mật khẩu mới:", value=st.session_state['users'][gv_can_sua]['pass'])
+                pass_moi = c_edit2.text_input("Cấp lại mật khẩu mới:", value=st.session_state['users'][gv_can_sua]['pass'])
                 c_btn1, c_btn2 = c_edit3.columns(2)
                 if c_btn1.button("💾 Lưu Sửa đổi"):
                     st.session_state['users'][gv_can_sua]['name'] = ten_moi
                     st.session_state['users'][gv_can_sua]['pass'] = pass_moi
                     luu_du_lieu_len_may()
-                    st.success("Cập nhật thành công!")
+                    st.success(f"Cập nhật thành công tài khoản {gv_can_sua}!")
                     st.rerun()
                 if c_btn2.button("🗑️ Xóa GV này"):
                     del st.session_state['users'][gv_can_sua]
@@ -334,7 +361,7 @@ with tab_quan_ly:
                     st.rerun()
 
             st.markdown("---")
-            st.write("👉 **2. THÊM MỚI GIÁO VIÊN TƯ VẤN:**")
+            st.write("👉 **3. THÊM MỚI GIÁO VIÊN TƯ VẤN:**")
             c_add1, c_add2, c_add3 = st.columns(3)
             new_id = c_add1.text_input("Tên đăng nhập (VD: gv06)")
             new_name = c_add2.text_input("Tên hiển thị (VD: Cô Ngọc)")

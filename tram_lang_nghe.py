@@ -176,23 +176,18 @@ with tab_giao_vien:
                         for tn in ca['tin_nhan']: st.write(f"*{tn['nguoi_gui']}*: {tn['noi_dung']}")
                     
                     if st.button(f"🧠 Yêu cầu AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                        with st.spinner("Đang đi qua cổng v1 mới nhất của Google..."):
+                        with st.spinner("Đang kết nối siêu trí tuệ Gemini 2.5 Flash..."):
                             lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
                             prompt = f"Đọc lịch sử trò chuyện:\n{lich_su}\nĐóng vai Chuyên gia Tâm lý, phân tích theo cấu trúc:\n[RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao\n[1. PHÂN TÍCH]: Tâm lý, Môi trường.\n[2. HƯỚNG GIẢI QUYẾT]\n[3. GỢI Ý TIN NHẮN]"
                             
                             try:
+                                # GỌI ĐÚNG CON GEMINI 2.5 MÀ BẠN ĐƯỢC PHÉP DÙNG!
+                                url_main = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
                                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                 headers = {'Content-Type': 'application/json'}
                                 
-                                # CHIẾN THUẬT CUỐI CÙNG: Đi cổng chính v1, gọi thẳng con 2.0-flash xịn nhất
-                                url_main = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={API_KEY}"
                                 response = requests.post(url_main, json=payload, headers=headers)
                                 
-                                # Chống cháy nếu con 2.0 bị lỗi, tự động gọi con 1.5 qua cổng v1
-                                if response.status_code == 404:
-                                    url_backup = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
-                                    response = requests.post(url_backup, json=payload, headers=headers)
-
                                 if response.status_code == 200:
                                     res_text = response.json()['candidates'][0]['content']['parts'][0]['text']
                                     ca['ai_phan_tich'] = res_text
@@ -200,7 +195,7 @@ with tab_giao_vien:
                                     elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
                                     else: ca['muc_do_rui_ro'] = "Thấp"
                                 elif response.status_code == 429:
-                                    ca['ai_phan_tich'] = "🚨 HẾT LƯỢT MIỄN PHÍ: Khóa API này đã hết lượt dùng. Cần đổi khóa từ Gmail khác."
+                                    ca['ai_phan_tich'] = "⏳ BẠN ĐANG HỎI QUÁ NHANH: Quota của bạn là 5 lần/phút. Xin đợi 15 giây rồi bấm lại nhé!"
                                 else:
                                     ca['ai_phan_tich'] = f"🚨 LỖI {response.status_code}: {response.text}"
                                 
@@ -210,13 +205,17 @@ with tab_giao_vien:
                             except Exception as e: 
                                 st.error(f"Lỗi mạng: {e}")
                                 
+                    # === GIAO DIỆN CỬA SỔ GEMINI MỚI TẠI ĐÂY ===
                     if ca.get('ai_phan_tich'):
-                        if "🚨" in ca.get('ai_phan_tich'):
-                            st.error(ca.get('ai_phan_tich'))
+                        if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'):
+                            st.warning(ca.get('ai_phan_tich'))
                         else:
-                            st.info(ca.get('ai_phan_tich'))
+                            st.markdown("##### ✨ Cửa sổ Cố vấn AI (Gemini)")
+                            with st.container(height=300, border=True):
+                                st.markdown(ca.get('ai_phan_tich'))
                             
-                        gv_tra_loi = st.text_area("Soạn tin nhắn trả lời học sinh:", height=80, key=f"txt_{ma_ca}")
+                        st.markdown("---")
+                        gv_tra_loi = st.text_area("Soạn tin nhắn trả lời học sinh (Dựa trên tư vấn của AI):", height=80, key=f"txt_{ma_ca}")
                         if st.button("✅ Gửi trả lời", type="primary", key=f"gui_{ma_ca}"):
                             ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
                             ca['trang_thai'] = "GV đã phản hồi"

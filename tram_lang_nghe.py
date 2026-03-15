@@ -6,84 +6,85 @@ import requests
 import base64
 
 # ==========================================
-# KHỞI TẠO STATE & ĐỒNG BỘ TRƯỚC (ĐỂ LẤY THEME)
+# KHỞI TẠO STATE MÀU SẮC TRƯỚC
 # ==========================================
-if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
-if 'current_user' not in st.session_state: st.session_state['current_user'] = None
-if 'active_chat' not in st.session_state: st.session_state['active_chat'] = None 
-if 'menu_expanded' not in st.session_state: st.session_state['menu_expanded'] = True 
-if 'inbox_expanded' not in st.session_state: st.session_state['inbox_expanded'] = True 
 if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "Xanh Zalo"
-
-# BỘ MÀU THEME ĐA DẠNG
-theme_map = {
-    "Xanh Zalo": "#0068ff", 
-    "Tím Tinh Tế": "#6366f1", 
-    "Xanh Lá Tươi": "#10b981", 
-    "Đen Huyền Bí": "#1f2937",
-    "Đỏ Áp Lực": "#e53935"
-}
+theme_map = {"Xanh Zalo": "#0068ff", "Tím Tinh Tế": "#6366f1", "Xanh Lá Tươi": "#10b981", "Đen Huyền Bí": "#1f2937", "Đỏ Áp Lực": "#e53935"}
 main_color = theme_map.get(st.session_state['theme_color'], "#0068ff")
 
 # ==========================================
-# CẤU HÌNH HỆ THỐNG & CSS (GẮN MÀU THEME ĐỘNG)
+# CẤU HÌNH HỆ THỐNG & CSS ÉP KỊCH TRẦN 
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown(f"""
     <style>
-    /* Ép kịch trần, bỏ khoảng trắng trên cùng */
-    .block-container {{ padding: 0rem 0.5rem 0.5rem 0.5rem !important; max-width: 100% !important; margin-top: -30px !important; }}
+    /* 1. Ép kịch trần, xóa trắng khoảng thừa trên cùng */
+    .block-container {{
+        padding-top: 0rem !important; padding-bottom: 0.5rem !important;
+        padding-left: 0.5rem !important; padding-right: 0.5rem !important;
+        max-width: 100% !important; margin-top: -30px !important;
+    }}
     header {{ display: none !important; }}
     [data-testid="collapsedControl"] {{ display: none !important; }}
     section[data-testid="stSidebar"] {{ display: none !important; }}
     
-    /* Tiêu đề TRẠM TƯ VẤN (Đổi màu theo Theme) */
+    /* 2. Tiêu đề TRẠM TƯ VẤN ở giữa */
     .top-title {{
         text-align: center; color: {main_color}; font-size: 26px; font-weight: 800;
         text-transform: uppercase; border-bottom: 2px solid {main_color}; 
         padding-bottom: 5px; margin-bottom: 10px;
     }}
 
-    /* CỘT MENU BÊN TRÁI (Màu nền đổi theo Theme) */
+    /* 3. CỘT MENU BÊN TRÁI (Siêu mỏng, Đổi màu theo Theme) */
     [data-testid="column"]:nth-of-type(1) {{
         background-color: {main_color}; border-radius: 12px; padding: 10px 0;
         text-align: center; height: 90vh; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     }}
-    
     [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {{
         background-color: transparent !important; color: white !important; border: none !important;
-        padding: 15px 0 !important; width: 100% !important; font-size: 15px !important;
+        padding: 15px 0 !important; width: 100% !important; font-size: 16px !important;
     }}
     [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {{ background-color: rgba(255,255,255,0.2) !important; }}
 
-    /* CỘT DANH SÁCH (HỘP THƯ) - ÉP CÁC CA DÍNH SÁT RẠT NHAU */
+    /* 4. CỘT DANH SÁCH (HỘP THƯ) - CÁC CA DÍNH SÁT NHAU */
     [data-testid="column"]:nth-of-type(2) div[data-testid="stVerticalBlock"] > div {{
-        padding: 0 !important; gap: 0 !important; margin-bottom: -15px !important; /* Âm margin để các nút đè lên nhau */
+        padding: 0 !important; gap: 0 !important; margin-bottom: -15px !important;
     }}
     .zalo-list-btn button {{
         width: 100% !important; background-color: white !important; border: 1px solid #eaedf0 !important;
-        border-radius: 0px !important; padding: 12px 10px !important; text-align: left !important;
+        border-radius: 0px !important; padding: 10px 10px !important; text-align: left !important;
         justify-content: flex-start !important; color: #111 !important; margin-top: -1px !important; 
     }}
+    .zalo-list-btn button p {{ margin: 0 !important; line-height: 1.4 !important; font-size: 14px !important; }}
     .zalo-list-btn button:hover {{ background-color: #f3f5f6 !important; }}
+    
+    /* Nút thu gọn mini */
+    .tiny-btn button {{ padding: 0px !important; border: none !important; background: transparent !important; color: #9CA3AF !important; font-size: 14px !important; }}
+    .tiny-btn button:hover {{ color: {main_color} !important; }}
     </style>
 """, unsafe_allow_html=True)
 
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
-except ImportError: HAS_AUTOREFRESH = False
+except ImportError:
+    HAS_AUTOREFRESH = False
 
 try:
     if "API_KEYS" in st.secrets: danh_sach_keys = [k.strip() for k in st.secrets["API_KEYS"].split(",") if k.strip()]
     elif "API_KEY" in st.secrets: danh_sach_keys = [st.secrets["API_KEY"].strip()]
-    else: st.stop()
+    else:
+        st.error("❌ Chưa cấu hình API Key!")
+        st.stop()
 except: pass
 
 MA_BAO_MAT_TRUONG = "123456" 
 FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
 
+# ==========================================
+# KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
+# ==========================================
 def tai_du_lieu_tu_may():
     try:
         r = requests.get(f"{FIREBASE_URL}/he_thong.json")
@@ -95,6 +96,12 @@ def luu_du_lieu_len_may():
     du_lieu_dong_bo = {'users': st.session_state['users'], 'database': st.session_state['database'], 'config': st.session_state['config'], 'licenses': st.session_state.get('licenses', {})}
     try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo)
     except: pass
+
+if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
+if 'current_user' not in st.session_state: st.session_state['current_user'] = None
+if 'active_chat' not in st.session_state: st.session_state['active_chat'] = None 
+if 'menu_expanded' not in st.session_state: st.session_state['menu_expanded'] = True 
+if 'inbox_expanded' not in st.session_state: st.session_state['inbox_expanded'] = True 
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['users'] = {
@@ -131,7 +138,7 @@ def kiem_tra_ban_quyen_mem():
     return True
 
 # ==========================================
-# GIAO DIỆN ĐĂNG NHẬP (ĐÃ FIX LỖI KẸT TOKEN)
+# GIAO DIỆN ĐĂNG NHẬP
 # ==========================================
 def kiem_tra_dang_nhap(role_can_thiet=None):
     if 'token_login' in st.query_params:
@@ -158,7 +165,6 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         if role_can_thiet and user_info['role'] != role_can_thiet:
             st.markdown("<br><br>", unsafe_allow_html=True)
             st.error("🚫 Bạn đang dùng tài khoản không có quyền truy cập khu vực này!")
-            # NÚT XÓA KẸT TOKEN
             if st.button("🔄 Thoát tài khoản cũ & Đăng nhập lại", type="primary"):
                 st.session_state['current_user'] = None
                 if 'token_login' in st.query_params: del st.query_params['token_login']
@@ -253,13 +259,14 @@ elif st.session_state['current_view'] == "student_view":
                     st.rerun()
 
 # ==========================================
-# 3. KHÔNG GIAN GIÁO VIÊN (ZALO TỶ LỆ VÀNG THEME ĐỘNG)
+# 3. KHÔNG GIAN GIÁO VIÊN (ZALO TỶ LỆ VÀNG 3 CỘT)
 # ==========================================
 elif st.session_state['current_view'] == "teacher_view":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         user_id = st.session_state['current_user']
         user_info = st.session_state['users'][user_id]
         phan_mem_hoat_dong = kiem_tra_ban_quyen_mem()
+        
         if HAS_AUTOREFRESH: st_autorefresh(interval=6000, limit=None, key="gv_refresh") 
 
         st.markdown("<div class='top-title'>TRẠM TƯ VẤN</div>", unsafe_allow_html=True)
@@ -278,13 +285,12 @@ elif st.session_state['current_view'] == "teacher_view":
                     st.session_state['menu_expanded'] = False; st.rerun()
                 
                 if user_info.get('avatar'): st.markdown(f'<div style="text-align:center; margin-bottom: 10px;"><img src="data:image/png;base64,{user_info["avatar"]}" width="50" style="border-radius: 50%;"></div>', unsafe_allow_html=True)
-                st.markdown(f"<div style='text-align:center; font-size:13px; font-weight:bold; color:white; margin-bottom:10px;'>{user_info.get('name', 'Giáo viên')}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:center; font-size:14px; font-weight:bold; color:white; margin-bottom:10px;'>{user_info.get('name', 'Giáo viên')}</div>", unsafe_allow_html=True)
                 
                 if st.button("💬 Ca đang mở", key="m_mo"): st.session_state['menu_gv'] = "mo"
                 if st.button("📦 Ca đã đóng", key="m_xong"): st.session_state['menu_gv'] = "xong"
                 if st.button("👤 Hồ sơ", key="m_hs"): st.session_state['menu_gv'] = "ho_so"
                 
-                # TÍNH NĂNG CHỌN MÀU THEME CHO GIÁO VIÊN
                 st.markdown("<hr style='margin: 10px 0; border-color: rgba(255,255,255,0.2);'>", unsafe_allow_html=True)
                 st.markdown("<div style='color:white; font-size:12px; text-align:center;'>Đổi Giao diện:</div>", unsafe_allow_html=True)
                 st.session_state['theme_color'] = st.selectbox("", list(theme_map.keys()), index=list(theme_map.keys()).index(st.session_state['theme_color']), label_visibility="collapsed")
@@ -312,7 +318,7 @@ elif st.session_state['current_view'] == "teacher_view":
         ca_dang_mo = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] not in ["Đã đóng ca"]}
         ca_da_dong = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] == "Đã đóng ca"}
 
-        # --- CỘT 2: DANH SÁCH (HỘP THƯ) ---
+        # --- CỘT 2: DANH SÁCH (HỘP THƯ ĐÃ SỬA LỖI TEXT) ---
         with col_danh_sach:
             c_title, c_toggle = st.columns([5, 1])
             if st.session_state['inbox_expanded']:
@@ -329,26 +335,31 @@ elif st.session_state['current_view'] == "teacher_view":
                         with st.container(height=700, border=False):
                             for i, (ma_ca, ca) in enumerate(danh_sach_ca_sap_xep, 1):
                                 thoi_gian_ca = ca['tin_nhan'][-1].get('thoi_gian', ca.get('thoi_gian', ''))[-5:]
-                                if ca['trang_thai'] == "HS vừa nhắn lại": icon_tt = "🔴"
-                                elif ca['trang_thai'] == "Chờ xử lý": icon_tt = "🟡"
-                                else: icon_tt = "🟢"
+                                if ca['trang_thai'] == "HS vừa nhắn lại": icon_tt = "🔴 [TIN MỚI]"
+                                elif ca['trang_thai'] == "Chờ xử lý": icon_tt = "🟡 [LẦN ĐẦU]"
+                                else: icon_tt = "🟢 [THEO DÕI]"
                                     
                                 tn_cuoi = ca['tin_nhan'][-1]['noi_dung']
                                 tn_rut_gon = tn_cuoi[:35] + "..." if len(tn_cuoi) > 35 else tn_cuoi
                                 
                                 st.markdown('<div class="zalo-list-btn">', unsafe_allow_html=True)
+                                # DÙNG VĂN BẢN THƯỜNG TRONG NÚT BẤM (KHÔNG DÙNG SPAN HTML)
+                                label_nut = f"{icon_tt} {ma_ca} (Lớp {ca['lop']})\n🕒 {thoi_gian_ca} | 💬 {tn_rut_gon}"
+                                
                                 btn_type = "primary" if st.session_state.get('active_chat') == ma_ca else "secondary"
-                                if st.button(f"{i}. {icon_tt} **{ma_ca}** (Lớp {ca['lop']})\n<span style='font-size:12px; color:gray;'>🕒 {thoi_gian_ca} | 💬 {tn_rut_gon}</span>", key=f"btn_{ma_ca}", type=btn_type):
+                                if st.button(label_nut, key=f"btn_{ma_ca}", type=btn_type):
                                     st.session_state['active_chat'] = ma_ca
                                     st.rerun()
                                 st.markdown('</div>', unsafe_allow_html=True)
+                                
                 elif st.session_state['menu_gv'] == "xong":
                     c_title.markdown(f"<b style='color:{main_color}; font-size:16px;'>📦 Đã hoàn thành</b>", unsafe_allow_html=True)
                     with st.container(height=700, border=False):
                         for i, (ma_ca, ca) in enumerate(ca_da_dong.items(), 1):
                             st.markdown('<div class="zalo-list-btn">', unsafe_allow_html=True)
+                            label_nut = f"📦 {ma_ca} (Lớp {ca['lop']})\nĐã đóng hồ sơ"
                             btn_type = "primary" if st.session_state.get('active_chat') == ma_ca else "secondary"
-                            if st.button(f"{i}. {ma_ca} (Lớp {ca['lop']})\nĐã đóng hồ sơ", key=f"btn_{ma_ca}", type=btn_type):
+                            if st.button(label_nut, key=f"btn_{ma_ca}", type=btn_type):
                                 st.session_state['active_chat'] = ma_ca; st.rerun()
                             st.markdown('</div>', unsafe_allow_html=True)
             else:
@@ -434,7 +445,7 @@ elif st.session_state['current_view'] == "teacher_view":
                                                 ca_hien_tai['ai_phan_tich'] = res.json()['candidates'][0]['content']['parts'][0]['text']
                                                 thanh_cong = True
                                                 break  
-                                        if not thanh_cong: ca_hien_tai['ai_phan_tich'] = "⏳ **LỖI 20 LẦN/NGÀY:** Vui lòng dùng API Key Gmail dự phòng."
+                                        if not thanh_cong: ca_hien_tai['ai_phan_tich'] = "⏳ **LỖI 20 LẦN/NGÀY:** Vui lòng dùng Key Gmail dự phòng."
                                         luu_du_lieu_len_may()
                                         st.rerun()
                                     except Exception as e: st.error(f"Lỗi: {e}")
@@ -455,8 +466,8 @@ elif st.session_state['current_view'] == "teacher_view":
                     file_anh = st.file_uploader("Tải ảnh mới", type=['png', 'jpg', 'jpeg'])
                 with c_info:
                     new_name = st.text_input("Họ tên:", value=user_info.get('name', ''))
-                    new_phone = st.text_input("SĐT:", value=user_info.get('phone', ''))
-                    new_pw = st.text_input("Mật khẩu mới:", type="password")
+                    new_phone = st.text_input("SĐT (Zalo):", value=user_info.get('phone', ''))
+                    new_pw = st.text_input("Mật khẩu mới (Bỏ trống nếu không đổi):", type="password")
                 if st.button("💾 Lưu thay đổi", type="primary"):
                     st.session_state['users'][user_id]['name'] = new_name
                     st.session_state['users'][user_id]['phone'] = new_phone
@@ -480,7 +491,7 @@ elif st.session_state['current_view'] == "admin_view":
         with col_menu_ad:
             st.markdown(f"<div style='text-align:center;'><b>⚙️ {st.session_state['users'][user_hien_tai]['name']}</b></div>", unsafe_allow_html=True)
             st.markdown("---")
-            danh_muc_admin = ["📊 Thống kê", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo"]
+            danh_muc_admin = ["📊 Thống kê", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo", "🔐 Đổi Mật khẩu"]
             if user_hien_tai == "admin": danh_muc_admin.append("🔑 Nhập Mã Gia hạn")
             if user_hien_tai == "hoanganh_dev": danh_muc_admin.append("🛠️ TÁC GIẢ: Cấp Key")
                 
@@ -494,51 +505,70 @@ elif st.session_state['current_view'] == "admin_view":
 
         with col_main_ad:
             if HAS_AUTOREFRESH: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
-            if not phan_mem_hoat_dong and user_hien_tai != "hoanganh_dev": st.error("⛔ PHẦN MỀM CHƯA KÍCH HOẠT HOẶC ĐÃ HẾT HẠN.")
+            
+            if not phan_mem_hoat_dong and user_hien_tai != "hoanganh_dev":
+                st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN CHÍNH THỨC.")
+                st.markdown("---")
                 
             tong_ca = len(st.session_state['database'])
             ca_khan_cap = len([ca for ca in st.session_state['database'].values() if "Cao" in ca['muc_do_rui_ro']])
+            ca_tb = len([ca for ca in st.session_state['database'].values() if "Trung bình" in ca['muc_do_rui_ro']])
+            ca_thap = len([ca for ca in st.session_state['database'].values() if "Thấp" in ca['muc_do_rui_ro']])
+            ca_cho = tong_ca - ca_khan_cap - ca_tb - ca_thap 
             danh_sach_tai_khoan_gv = [k for k, v in st.session_state['users'].items() if v['role'] == 'teacher']
 
             if menu_admin == "📊 Thống kê":
                 c_a, c_b, c_c = st.columns(3)
                 c_a.metric("Tổng số ca tiếp nhận", f"{tong_ca} ca")
-                c_b.metric("Ca Khẩn cấp", f"{ca_khan_cap} ca", delta="Cảnh báo", delta_color="inverse")
+                c_b.metric("Ca Khẩn cấp", f"{ca_khan_cap} ca", delta="Báo động đỏ", delta_color="inverse")
                 c_c.metric("Nhân sự", f"{len(danh_sach_tai_khoan_gv)} GV")
+                if tong_ca > 0:
+                    chart_data = pd.DataFrame({"Mức độ": ["Cao", "Trung", "Thấp", "Chưa phân tích"], "Số lượng": [ca_khan_cap, ca_tb, ca_thap, ca_cho]})
+                    st.bar_chart(chart_data.set_index("Mức độ"), color="#3B82F6")
 
             elif menu_admin == "👥 Quản lý Nhân sự":
-                st.write("👉 **Sửa hồ sơ / Đổi mật khẩu Giáo viên**")
                 if danh_sach_tai_khoan_gv:
-                    gv_can_sua = st.selectbox("Chọn tài khoản:", options=danh_sach_tai_khoan_gv)
+                    gv_can_sua = st.selectbox("Chọn tài khoản:", options=danh_sach_tai_khoan_gv, format_func=lambda x: f"{x} ({st.session_state['users'][x].get('name','')})")
                     c_edit1, c_edit2, c_edit3 = st.columns(3)
                     ten_moi = c_edit1.text_input("Tên mới:", value=st.session_state['users'][gv_can_sua].get('name',''))
                     pass_moi = c_edit2.text_input("Mật khẩu mới:", value=st.session_state['users'][gv_can_sua]['pass'])
                     if c_edit3.button("💾 Lưu", type="primary"):
                         st.session_state['users'][gv_can_sua]['name'] = ten_moi
                         st.session_state['users'][gv_can_sua]['pass'] = pass_moi
-                        luu_du_lieu_len_may(); st.rerun()
-                st.write("👉 **Tạo tài khoản Giáo viên mới:**")
+                        luu_du_lieu_len_may()
+                        st.rerun()
+                st.markdown("---")
                 c_add1, c_add2, c_add3 = st.columns(3)
                 new_id = c_add1.text_input("Tên đăng nhập mới")
                 new_name = c_add2.text_input("Tên hiển thị")
                 new_pass = c_add3.text_input("Mật khẩu")
                 if st.button("➕ Tạo tài khoản"):
                     st.session_state['users'][new_id] = {'pass': new_pass, 'role': 'teacher', 'name': new_name, 'avatar': '', 'phone': '', 'email': ''}
-                    luu_du_lieu_len_may(); st.rerun()
+                    luu_du_lieu_len_may()
+                    st.rerun()
 
             elif menu_admin == "📥 Xuất Báo cáo":
                 if tong_ca > 0:
                     du_lieu_xuat = [{"Mã Hồ Sơ": k, "Thời gian": v['thoi_gian'], "Lớp": v['lop'], "Cảm xúc": v.get('cam_xuc_ban_dau', ''), "Rủi ro": v['muc_do_rui_ro'], "Trạng thái": v['trang_thai']} for k, v in st.session_state['database'].items()]
                     st.download_button("📥 Tải File CSV", data=pd.DataFrame(du_lieu_xuat).to_csv(index=False).encode('utf-8-sig'), file_name="Bao_Cao.csv", mime="text/csv", type="primary")
 
+            elif menu_admin == "🔐 Đổi Mật khẩu":
+                admin_new_pass = st.text_input("Mật khẩu Admin mới:", type="password")
+                if st.button("🔑 Cập nhật", type="primary"):
+                    st.session_state['users'][user_hien_tai]['pass'] = admin_new_pass
+                    luu_du_lieu_len_may()
+                    st.success("Đổi thành công!")
+
             elif menu_admin == "🔑 Nhập Mã Gia hạn":
-                st.write(f"**Mã đang dùng:** `{st.session_state['config'].get('active_key', '')}`")
+                current_key = st.session_state['config'].get('active_key', '')
+                st.write(f"**Mã đang dùng:** `{current_key}`")
                 new_key = st.text_input("Nhập Mã Bản Quyền mới:")
                 if st.button("🚀 Kích hoạt", type="primary"):
                     if new_key in st.session_state['licenses'] and st.session_state['licenses'][new_key]['active']:
                         st.session_state['config']['active_key'] = new_key
-                        luu_du_lieu_len_may(); st.rerun()
-                    else: st.error("❌ Mã Bản Quyền không hợp lệ!")
+                        luu_du_lieu_len_may()
+                        st.success("🎉 Kích hoạt thành công!")
+                        st.rerun()
 
             elif menu_admin == "🛠️ TÁC GIẢ: Cấp Key":
                 for key, data in st.session_state['licenses'].items():
@@ -548,12 +578,16 @@ elif st.session_state['current_view'] == "admin_view":
                         if c1.button("Gia hạn 1 Năm", key=f"gh_{key}"):
                             st.session_state['licenses'][key]['expiry_date'] = (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y')
                             st.session_state['licenses'][key]['active'] = True
-                            luu_du_lieu_len_may(); st.rerun()
+                            luu_du_lieu_len_may()
+                            st.rerun()
                         if c2.button("Khóa Key", key=f"lock_{key}"):
                             st.session_state['licenses'][key]['active'] = False
-                            luu_du_lieu_len_may(); st.rerun()
+                            luu_du_lieu_len_may()
+                            st.rerun()
                 st.write("👉 **Tạo Mã Bản Quyền Mới:**")
                 new_school = st.text_input("Tên trường đối tác:")
                 if st.button("➕ Tạo Key Mới", type="primary"):
-                    st.session_state['licenses'][f"KEY-{random.randint(10000, 99999)}"] = {'school_name': new_school, 'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y'), 'active': True}
-                    luu_du_lieu_len_may(); st.rerun()
+                    tao_ma_moi = f"KEY-{random.randint(10000, 99999)}"
+                    st.session_state['licenses'][tao_ma_moi] = {'school_name': new_school, 'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y'), 'active': True}
+                    luu_du_lieu_len_may()
+                    st.rerun()

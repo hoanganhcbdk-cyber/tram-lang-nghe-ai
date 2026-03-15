@@ -4,10 +4,9 @@ import random
 import pandas as pd
 import requests
 import base64
-import uuid
 
 # ==========================================
-# CẤU HÌNH HỆ THỐNG 
+# CẤU HÌNH HỆ THỐNG & TẢI NGẦM 
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
@@ -52,11 +51,11 @@ def luu_du_lieu_len_may():
     except: pass
 
 # ==========================================
-# KHỞI TẠO STATE & ĐỒNG BỘ 
+# KHỞI TẠO STATE & ĐỒNG BỘ REAL-TIME
 # ==========================================
 if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
 if 'current_user' not in st.session_state: st.session_state['current_user'] = None
-if 'last_active_ca' not in st.session_state: st.session_state['last_active_ca'] = None 
+if 'last_active_ca' not in st.session_state: st.session_state['last_active_ca'] = None # BỘ NHỚ GHIM DÒNG
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['users'] = {
@@ -249,7 +248,7 @@ elif st.session_state['current_view'] == "student_view":
                         st.markdown(f"**{tn['nguoi_gui']}**")
                         st.write(tn['noi_dung'])
             
-            if ca['trang_thai'] in ["GV đã phản hồi", "Đã chốt lịch hẹn"]:
+            if ca['trang_thai'] in ["GV đã phản hồi", "Đang theo dõi"]:
                 hs_phan_hoi = st.text_input("Gửi tin nhắn phản hồi của em:")
                 if st.button("Gửi trả lời", key="hs_reply"):
                     ca['tin_nhan'].append({"nguoi_gui": "Học sinh", "noi_dung": hs_phan_hoi})
@@ -257,6 +256,7 @@ elif st.session_state['current_view'] == "student_view":
                     luu_du_lieu_len_may()
                     st.rerun()
             elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang đọc và soạn tin nhắn trả lời. Em chờ chút nhé!")
+            elif ca['trang_thai'] == "Đã đóng ca": st.info("🔒 Hồ sơ tư vấn này đã được thầy cô đóng lại.")
 
 # ==========================================
 # 3. KHÔNG GIAN GIÁO VIÊN
@@ -273,13 +273,13 @@ elif st.session_state['current_view'] == "teacher_view":
         st.sidebar.markdown("---")
         
         menu_gv = st.sidebar.radio("🧭 DANH MỤC QUẢN LÝ", [
-            "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)", 
-            "🟢 Lịch sử Ca đã chốt", 
+            "📥 Không gian Làm việc (Ca đang mở)", 
+            "🟢 Lịch sử Ca đã đóng", 
             "👤 Hồ sơ cá nhân & Cài đặt"
         ])
         
-        if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)" and HAS_AUTOREFRESH:
-            st_autorefresh(interval=8000, limit=None, key="gv_refresh") 
+        if menu_gv == "📥 Không gian Làm việc (Ca đang mở)" and HAS_AUTOREFRESH:
+            st_autorefresh(interval=6000, limit=None, key="gv_refresh") 
                 
         nut_dang_xuat()
         render_ban_quyen()
@@ -288,32 +288,38 @@ elif st.session_state['current_view'] == "teacher_view":
         
         if not phan_mem_hoat_dong:
             st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN CHÍNH THỨC.")
-            st.warning("Thầy/Cô vẫn có thể xem được tin nhắn của học sinh, nhưng tính năng **AI Cố vấn** và **Gửi phản hồi** đã bị khóa. Vui lòng liên hệ Admin (BGH) hoặc Tác giả Lý Hoàng Anh (0969969189) để gia hạn.")
+            st.warning("Thầy/Cô vẫn có thể xem được tin nhắn của học sinh, nhưng tính năng **AI Cố vấn** và **Gửi phản hồi** đã bị khóa. Vui lòng liên hệ BGH để gia hạn.")
             st.markdown("---")
         
         ca_cua_toi = {k: v for k, v in st.session_state['database'].items() if v['gv_phu_trach'] == user_id}
-        ca_cho = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]}
-        ca_xong = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] not in ["Chờ xử lý", "HS vừa nhắn lại"]}
+        
+        # ĐỊNH NGHĨA LẠI: "Đang mở" bao gồm cả ca GV đã trả lời (để tiện theo dõi tiếp)
+        ca_dang_mo = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại", "GV đã phản hồi", "Đang theo dõi"]}
+        ca_da_dong = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Đã chốt lịch hẹn", "Đã đóng ca"]}
 
-        if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)":
-            col_tieu_de, col_loc = st.columns([2, 1])
-            col_tieu_de.subheader(f"🔴 Danh sách cần xử lý ({len(ca_cho)})")
-            loc_ca = col_loc.selectbox("Bộ lọc nhanh:", ["Tất cả ca chờ", "Chỉ ca hẹn Trực tiếp", "Chỉ ca Khẩn cấp (Rủi ro Cao)"])
+        if menu_gv == "📥 Không gian Làm việc (Ca đang mở)":
+            st.subheader(f"🔴 Danh sách cần theo dõi và xử lý ({len(ca_dang_mo)})")
             
-            if loc_ca == "Chỉ ca Khẩn cấp (Rủi ro Cao)": ca_cho = {k: v for k, v in ca_cho.items() if "Cao" in v['muc_do_rui_ro']}
-            elif loc_ca == "Chỉ ca hẹn Trực tiếp": ca_cho = {k: v for k, v in ca_cho.items() if "Trực tiếp" in v.get('hinh_thuc', '')}
-            
-            if not ca_cho: st.success("✅ Hộp thư trống. Thầy/Cô đã xử lý xuất sắc mọi vấn đề!")
+            if not ca_dang_mo: st.success("✅ Hộp thư trống. Thầy/Cô đã xử lý xuất sắc mọi vấn đề!")
             else:
-                for ma_ca, ca in ca_cho.items():
+                # THUẬT TOÁN SẮP XẾP CHỐNG ĐẢO LỘN: Cố định vị trí dựa theo Mã Ca (HS-xxxx)
+                danh_sach_ca_sap_xep = sorted(ca_dang_mo.items(), key=lambda x: x[0], reverse=True)
+                
+                for ma_ca, ca in danh_sach_ca_sap_xep:
                     hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Tư vấn Gián tiếp')
                     
+                    # 1. HIỂN THỊ TIN NHẮN GỐC ĐẦU TIÊN
                     tn_goc = ca['tin_nhan'][0]['noi_dung']
-                    tn_rut_gon = tn_goc[:50] + "..." if len(tn_goc) > 50 else tn_goc
-                    co_tin_moi = (ca['trang_thai'] == "HS vừa nhắn lại")
-                    icon_trang_thai = "🟢 [CÓ TIN MỚI]" if co_tin_moi else "⚪ [Đang chờ]"
+                    tn_rut_gon = tn_goc[:60] + "..." if len(tn_goc) > 60 else tn_goc
+                    
+                    # 2. ICON NHẬN DIỆN THÔNG MINH
+                    if ca['trang_thai'] == "HS vừa nhắn lại": icon_trang_thai = "🔴 [CÓ TIN MỚI]"
+                    elif ca['trang_thai'] == "Chờ xử lý": icon_trang_thai = "🟡 [CA MỚI]"
+                    else: icon_trang_thai = "🟢 [Đang theo dõi]"
                     
                     label_thu_gon = f"{icon_trang_thai} {ma_ca} | Lớp {ca['lop']} | Gốc: {tn_rut_gon}"
+                    
+                    # 3. KHÓA CỨNG DÒNG ĐANG LÀM VIỆC
                     is_expanded = (st.session_state['last_active_ca'] == ma_ca)
                     
                     with st.expander(label_thu_gon, expanded=is_expanded):
@@ -337,11 +343,11 @@ elif st.session_state['current_view'] == "teacher_view":
                                     st.rerun()
                                 else: st.error("Mã không hợp lệ hoặc đã bị khóa!")
                         else:
-                            ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if co_tin_moi else "🧠 Yêu cầu AI Cố vấn ca này"
-                            if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if co_tin_moi else "secondary"):
+                            ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if ca['trang_thai'] == "HS vừa nhắn lại" else "🧠 Yêu cầu AI Cố vấn ca này"
+                            
+                            if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if ca['trang_thai'] == "HS vừa nhắn lại" else "secondary"):
                                 st.session_state['last_active_ca'] = ma_ca 
                                 with st.spinner("AI đang ghi nhớ bối cảnh và phân tích diễn biến mới..."):
-                                    # NÃO BỘ AI "TỰ NHẬN THỨC" LINH HOẠT
                                     lich_su_toan_bo = ""
                                     for t in ca['tin_nhan'][:-1]:
                                         lich_su_toan_bo += f"{t['nguoi_gui']}: {t['noi_dung']}\n"
@@ -395,23 +401,26 @@ elif st.session_state['current_view'] == "teacher_view":
                                     
                             gv_tra_loi = st.text_area("Soạn trả lời / Xác nhận lịch hẹn:", height=80, key=f"txt_{ma_ca}")
                             col_btn1, col_btn2 = st.columns(2)
-                            if col_btn1.button("✅ Gửi trả lời & Đang theo dõi", type="primary", key=f"gui_{ma_ca}"):
+                            
+                            # NÚT GỬI & ĐANG THEO DÕI (Ca vẫn ở trong Tab này)
+                            if col_btn1.button("✅ Gửi trả lời & Tiếp tục theo dõi", type="primary", key=f"gui_{ma_ca}"):
                                 st.session_state['last_active_ca'] = ma_ca 
                                 ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
-                                ca['trang_thai'] = "GV đã phản hồi"
+                                ca['trang_thai'] = "Đang theo dõi"
                                 luu_du_lieu_len_may()
                                 st.rerun()
-                            if "Trực tiếp" in hinh_thuc_hien_tai:
-                                if col_btn2.button("📅 Gửi & Chốt lịch hẹn", key=f"chot_{ma_ca}"):
-                                    st.session_state['last_active_ca'] = None 
-                                    ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
-                                    ca['trang_thai'] = "Đã chốt lịch hẹn"
-                                    luu_du_lieu_len_may()
-                                    st.rerun()
+                                
+                            # NÚT ĐÓNG CA (Đẩy ca sang Tab Lịch sử)
+                            if col_btn2.button("📦 Xong việc, Đóng hồ sơ ca này", key=f"dong_{ma_ca}"):
+                                st.session_state['last_active_ca'] = None 
+                                if gv_tra_loi: ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
+                                ca['trang_thai'] = "Đã đóng ca"
+                                luu_du_lieu_len_may()
+                                st.rerun()
 
         elif menu_gv == "🟢 Lịch sử Ca đã chốt":
-            st.subheader(f"🟢 Hồ sơ các ca đã xử lý ({len(ca_xong)})")
-            for ma_ca, ca in ca_xong.items():
+            st.subheader(f"🟢 Hồ sơ các ca đã kết thúc ({len(ca_da_dong)})")
+            for ma_ca, ca in ca_da_dong.items():
                 hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Gián tiếp')
                 tn_goc = ca['tin_nhan'][0]['noi_dung']
                 tn_rut_gon = tn_goc[:50] + "..." if len(tn_goc) > 50 else tn_goc

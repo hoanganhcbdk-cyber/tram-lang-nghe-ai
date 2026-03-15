@@ -6,11 +6,11 @@ import requests
 import base64
 
 # ==========================================
-# CẤU HÌNH HỆ THỐNG & TẢI NGẦM (ZALO-LIKE)
+# CẤU HÌNH HỆ THỐNG & TẢI NGẦM 
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
-# Khai báo thư viện tải ngầm mượt mà (Không làm nháy màn hình)
+# Khai báo thư viện tải ngầm mượt mà
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
@@ -47,14 +47,14 @@ def luu_du_lieu_len_may():
     except: pass
 
 # ==========================================
-# KHỞI TẠO STATE & ĐỒNG BỘ REAL-TIME (CỐT LÕI MỚI)
+# KHỞI TẠO STATE & ĐỒNG BỘ REAL-TIME
 # ==========================================
 if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
 if 'current_user' not in st.session_state: st.session_state['current_user'] = None
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['users'] = {
-        'hoanganh_dev': {'pass': 'admin9999', 'role': 'admin', 'name': 'Nhà Phát Triển (Tác giả)', 'avatar': ''}, # Quyền admin ngầm
+        'hoanganh_dev': {'pass': 'admin9999', 'role': 'admin', 'name': 'Nhà Phát Triển (Tác giả)', 'avatar': ''}, # Quyền admin để ẩn mình vào cổng BGH
         'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
         'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Lý Hoàng Anh', 'avatar': ''},
         'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'Cô Phương (Toán)', 'avatar': ''}
@@ -63,7 +63,7 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['config'] = {'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y')}
     st.session_state['he_thong_da_khoi_dong'] = True
 
-# 🌟 CÔNG NGHỆ ZALO: LUÔN HÚT DỮ LIỆU MỚI MỖI KHI RERUN (Không bao giờ mất tin nhắn)
+# CẬP NHẬT DỮ LIỆU NGẦM TỪ FIREBASE
 du_lieu_dam_may = tai_du_lieu_tu_may()
 if du_lieu_dam_may:
     st.session_state['database'] = du_lieu_dam_may.get('database', {})
@@ -123,7 +123,7 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         return True
 
 def nut_dang_xuat():
-    if st.sidebar.button("🚪 Đăng xuất / Đổi vai trò", use_container_width=True):
+    if st.sidebar.button("🚪 Đăng xuất / Quay lại", use_container_width=True):
         st.session_state['current_user'] = None
         st.session_state['current_view'] = "landing_page"
         if 'token_login' in st.query_params: del st.query_params['token_login']
@@ -149,12 +149,12 @@ if st.session_state['current_view'] == "landing_page":
             st.session_state['current_view'] = "student_view"
             st.rerun()
     with col2:
-        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ tâm lý và nhận gợi ý tư vấn từ Trí tuệ Nhân tạo AI.")
+        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ tâm lý và nhận gợi ý tư vấn từ AI.")
         if st.button("Giáo Viên Truy Cập ➡️", use_container_width=True):
             st.session_state['current_view'] = "teacher_view"
             st.rerun()
     with col3:
-        st.warning("### ⚙️ Cổng Quản Lý\nThống kê dữ liệu, xuất báo cáo và Quản lý hệ thống.")
+        st.warning("### ⚙️ Cổng BGH / Quản trị\nThống kê dữ liệu, xuất báo cáo và Quản lý hệ thống.")
         if st.button("Ban Giám Hiệu Truy Cập ➡️", use_container_width=True):
             st.session_state['current_view'] = "admin_view"
             st.rerun()
@@ -220,8 +220,7 @@ elif st.session_state['current_view'] == "student_view":
             else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with tab_xem:
-        # HS xem tin nhắn cũng tự động tải lại ngầm để thấy cô chat
-        if HAS_AUTOREFRESH: st_autorefresh(interval=5000, limit=None, key="hs_refresh")
+        if HAS_AUTOREFRESH: st_autorefresh(interval=6000, limit=None, key="hs_refresh") # Load ngầm
         
         ma_tra_cuu = st.text_input("Nhập Mã bí mật hệ thống đã cấp cho em (VD: HS-1234):")
         if st.button("Truy cập phòng chat"): st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
@@ -267,12 +266,9 @@ elif st.session_state['current_view'] == "teacher_view":
             "👤 Hồ sơ cá nhân & Cài đặt"
         ])
         
-        if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)":
-            if HAS_AUTOREFRESH:
-                auto_refresh = st.sidebar.checkbox("🔄 Bật tải tin nhắn ngầm như Zalo", value=True)
-                if auto_refresh: st_autorefresh(interval=5000, limit=None, key="gv_refresh") # 5 Giây hút dữ liệu 1 lần cực mượt
-            else:
-                st.sidebar.warning("⚠️ Chưa tải thư viện tải ngầm. F5 tay nhé!")
+        # BẬT TẢI NGẦM TỰ ĐỘNG, KHÔNG HIỆN NÚT CHECKBOX
+        if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)" and HAS_AUTOREFRESH:
+            st_autorefresh(interval=6000, limit=None, key="gv_refresh") 
                 
         nut_dang_xuat()
         render_ban_quyen()
@@ -299,7 +295,8 @@ elif st.session_state['current_view'] == "teacher_view":
                     tn_rut_gon = tn_cuoi[:55] + "..." if len(tn_cuoi) > 55 else tn_cuoi
                     label_thu_gon = f"[{hinh_thuc_hien_tai.split(' ')[0]}] {ma_ca} | Lớp {ca['lop']} | Rủi ro: {ca['muc_do_rui_ro']} | 📝 {tn_rut_gon}"
                     
-                    with st.expander(label_thu_gon, expanded=True):
+                    # expanded=False để thu gọn toàn bộ giao diện cho đẹp
+                    with st.expander(label_thu_gon, expanded=False):
                         if "Trực tiếp" in hinh_thuc_hien_tai:
                             st.error(f"⏰ **Học sinh yêu cầu hẹn gặp mặt lúc:** {ca.get('lich_hen', 'Chưa xác định')}")
                         
@@ -309,10 +306,30 @@ elif st.session_state['current_view'] == "teacher_view":
                                     st.markdown(f"**{tn['nguoi_gui']}**")
                                     st.write(tn['noi_dung'])
                         
-                        if st.button(f"🧠 AI Cố vấn ca này", key=f"ai_{ma_ca}"):
-                            with st.spinner("AI đang phân tích..."):
-                                lich_su = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
-                                prompt = f"Đọc lịch sử: {lich_su}\nHãy phân tích Rủi ro, Giải pháp và Gợi ý trả lời."
+                        if st.button(f"🧠 AI Cố vấn cập nhật cho ca này", key=f"ai_{ma_ca}"):
+                            with st.spinner("AI đang phân tích dữ liệu mới nhất..."):
+                                # NÂNG CẤP TRÍ NHỚ AI: Tách biệt lịch sử và tin nhắn mới nhất
+                                lich_su_cu = ""
+                                if len(ca['tin_nhan']) > 1:
+                                    lich_su_cu = "\n".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan'][:-1]])
+                                
+                                tin_nhan_moi_nhat = ca['tin_nhan'][-1]['noi_dung']
+                                nguoi_gui_cuoi = ca['tin_nhan'][-1]['nguoi_gui']
+                                
+                                prompt = f"""Dưới đây là bối cảnh câu chuyện (Lịch sử cũ):
+                                {lich_su_cu if lich_su_cu else 'Không có lịch sử cũ, đây là tin nhắn đầu tiên.'}
+                                
+                                🔴 TIN NHẮN MỚI NHẤT VỪA NHẬN TỪ HỌC SINH: "{tin_nhan_moi_nhat}"
+                                Yêu cầu hỗ trợ: {hinh_thuc_hien_tai}.
+                                
+                                HÃY ĐÁNH GIÁ DỰA TRÊN TIN NHẮN MỚI NHẤT NÀY. 
+                                (Lưu ý: Nếu học sinh báo tin vui, nhắn cảm ơn, hoặc báo đã giải quyết xong, hãy chuyển RỦI RO về mức THẤP và gợi ý câu khép lại câu chuyện).
+                                
+                                Trả lời theo cấu trúc:
+                                [RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao
+                                [1. PHÂN TÍCH DIỄN BIẾN MỚI NHẤT]: ...
+                                [2. GỢI Ý CÁCH GIÁO VIÊN TRẢ LỜI]: ..."""
+                                
                                 try:
                                     payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                     headers = {'Content-Type': 'application/json'}
@@ -359,7 +376,7 @@ elif st.session_state['current_view'] == "teacher_view":
             for ma_ca, ca in ca_xong.items():
                 hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Gián tiếp')
                 tn_rut_gon = ca['tin_nhan'][0]['noi_dung'][:50] + "..."
-                with st.expander(f"Ca {ma_ca} | Lớp {ca['lop']} | Trạng thái: {ca['trang_thai']} | 📝 {tn_rut_gon}"):
+                with st.expander(f"Ca {ma_ca} | Lớp {ca['lop']} | Trạng thái: {ca['trang_thai']} | 📝 {tn_rut_gon}", expanded=False):
                     with st.container(height=200, border=True):
                         for tn in ca['tin_nhan']:
                             with st.chat_message("user" if tn['nguoi_gui'] == "Học sinh" else "assistant"):
@@ -395,21 +412,20 @@ elif st.session_state['current_view'] == "teacher_view":
 elif st.session_state['current_view'] == "admin_view":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
         user_hien_tai = st.session_state['current_user']
+        
         st.sidebar.markdown(f"⚙️ **Đang đăng nhập:** {st.session_state['users'][user_hien_tai]['name']}")
         st.sidebar.markdown("---")
         
-        # TẠO MENU CHUYÊN BIỆT
         danh_muc_admin = ["📊 Thống kê Tổng quan", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo Excel", "🔐 Đổi Mật khẩu"]
         
-        # 🔑 NẾU LÀ TÀI KHOẢN TÁC GIẢ -> THÊM MENU BẢN QUYỀN
+        # CHỈ HIỆN TAB BẢN QUYỀN KHI LÀ TÀI KHOẢN TÁC GIẢ HOANGANH_DEV
         if user_hien_tai == "hoanganh_dev":
             danh_muc_admin.append("🛠️ Quản lý Bản Quyền (Tác giả)")
             
         menu_admin = st.sidebar.radio("🧭 DANH MỤC QUẢN TRỊ", danh_muc_admin)
         
-        if HAS_AUTOREFRESH:
-            auto_refresh_admin = st.sidebar.checkbox("🔄 Tự động làm mới", value=True)
-            if auto_refresh_admin: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
+        # Tải ngầm mượt mà cho Admin
+        if HAS_AUTOREFRESH: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
             
         nut_dang_xuat()
         render_ban_quyen()
@@ -500,7 +516,7 @@ elif st.session_state['current_view'] == "admin_view":
                     luu_du_lieu_len_may()
                     st.success("Đổi mật khẩu thành công!")
 
-        # TÍNH NĂNG ĐỘC QUYỀN: GIA HẠN BẢN QUYỀN
+        # TÍNH NĂNG ĐỘC QUYỀN DÀNH CHO TÁC GIẢ (Sẽ ẩn với các admin khác)
         elif menu_admin == "🛠️ Quản lý Bản Quyền (Tác giả)":
             st.error("🔒 KHU VỰC BẢO MẬT: CHỈ DÀNH CHO NHÀ PHÁT TRIỂN")
             exp_date_str = st.session_state['config'].get('expiry_date', 'Chưa có')

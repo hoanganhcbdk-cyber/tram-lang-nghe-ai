@@ -11,7 +11,6 @@ import uuid
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
-# Ẩn nút checkbox tải ngầm, tự động chạy bằng công nghệ st_autorefresh
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
@@ -28,7 +27,7 @@ try:
         st.stop()
 except: pass
 
-MA_BAO_MAT_TRUONG = "123456" # Học sinh phải nhập mã này để nhắn tin
+MA_BAO_MAT_TRUONG = "123456" 
 
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
@@ -47,7 +46,7 @@ def luu_du_lieu_len_may():
         'users': st.session_state['users'], 
         'database': st.session_state['database'], 
         'config': st.session_state['config'],
-        'licenses': st.session_state['licenses'] # Thêm bộ nhớ Quản lý Key
+        'licenses': st.session_state.get('licenses', {})
     }
     try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo)
     except: pass
@@ -60,14 +59,14 @@ if 'current_user' not in st.session_state: st.session_state['current_user'] = No
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['users'] = {
-        'hoanganh_dev': {'pass': 'admin9999', 'role': 'admin', 'name': 'Nhà Phát Triển', 'avatar': ''}, # Quyền tối cao
+        'hoanganh_dev': {'pass': 'admin9999', 'role': 'admin', 'name': 'Nhà Phát Triển', 'avatar': ''}, 
         'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
         'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Lý Hoàng Anh', 'avatar': ''}
     }
     st.session_state['database'] = {}
-    st.session_state['config'] = {'active_key': 'DEMO-HSP'} # Key mặc định
+    st.session_state['config'] = {'active_key': 'FREE-1YEAR'} 
     st.session_state['licenses'] = {
-        'DEMO-HSP': {'school_name': 'THPT Hoàng Su Phì (Demo)', 'expiry_date': '31/12/2026', 'active': True}
+        'FREE-1YEAR': {'school_name': 'Miễn phí 1 Năm Đầu', 'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y'), 'active': True}
     }
     st.session_state['he_thong_da_khoi_dong'] = True
 
@@ -75,8 +74,16 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
 du_lieu_dam_may = tai_du_lieu_tu_may()
 if du_lieu_dam_may:
     st.session_state['database'] = du_lieu_dam_may.get('database', {})
-    st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
-    st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
+    
+    # Xử lý êm mượt nếu Firebase cũ chưa có License
+    if 'licenses' not in du_lieu_dam_may:
+        st.session_state['config'] = {'active_key': 'FREE-1YEAR'}
+        st.session_state['licenses'] = {'FREE-1YEAR': {'school_name': 'Bản quyền 1 Năm Đầu', 'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y'), 'active': True}}
+        luu_du_lieu_len_may()
+    else:
+        st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
+        st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
+        
     for k, v in du_lieu_dam_may.get('users', {}).items():
         if k in st.session_state['users']: st.session_state['users'][k].update(v)
         else: st.session_state['users'][k] = v
@@ -86,36 +93,27 @@ else:
 danh_sach_gv = {k: v['name'] for k, v in st.session_state['users'].items() if v['role'] == 'teacher'}
 
 # ==========================================
-# HỆ THỐNG KIỂM TRA BẢN QUYỀN (LICENSE MANAGER)
+# KHÓA MỀM (SOFT-LOCK): TRẢ VỀ TRẠNG THÁI BẢN QUYỀN
 # ==========================================
-def kiem_tra_ban_quyen():
+def kiem_tra_ban_quyen_mem():
     active_key = st.session_state['config'].get('active_key', '')
-    licenses = st.session_state['licenses']
+    licenses = st.session_state.get('licenses', {})
     
-    if st.session_state['current_user'] == 'hoanganh_dev': return True # Dev đi qua tự do
+    if st.session_state.get('current_user') == 'hoanganh_dev': return True # Dev luôn Full quyền
         
     if active_key not in licenses or not licenses[active_key]['active']:
-        st.error("⛔ PHẦN MỀM CHƯA ĐƯỢC KÍCH HOẠT HOẶC SAI MÃ BẢN QUYỀN.")
-        st.warning("Vui lòng yêu cầu Quản trị viên (BGH) vào phần Cài đặt để nhập đúng Mã Kích Hoạt.")
-        if st.button("⬅️ Quay lại Trang chủ"):
-            st.session_state['current_user'] = None
-            st.session_state['current_view'] = "landing_page"
-            st.rerun()
-        st.stop()
+        return False
         
     exp_date_str = licenses[active_key]['expiry_date']
-    exp_date = datetime.datetime.strptime(exp_date_str, '%d/%m/%Y')
-    if datetime.datetime.now() > exp_date:
-        st.error(f"⛔ BẢN QUYỀN CỦA [{licenses[active_key]['school_name']}] ĐÃ HẾT HẠN VÀO NGÀY {exp_date_str}.")
-        st.warning("Vui lòng liên hệ Tác giả: **Thầy Lý Hoàng Anh (SĐT/Zalo: 0969969189)** để mua thêm gói gia hạn.")
-        if st.button("⬅️ Quay lại Trang chủ"):
-            st.session_state['current_user'] = None
-            st.session_state['current_view'] = "landing_page"
-            st.rerun()
-        st.stop()
+    try:
+        exp_date = datetime.datetime.strptime(exp_date_str, '%d/%m/%Y')
+        if datetime.datetime.now() > exp_date: return False
+    except: return False
+    
+    return True
 
 # ==========================================
-# GIAO DIỆN ĐĂNG NHẬP & BẢN QUYỀN GÓC DƯỚI
+# GIAO DIỆN ĐĂNG NHẬP 
 # ==========================================
 def kiem_tra_dang_nhap(role_can_thiet=None):
     if 'token_login' in st.query_params:
@@ -140,7 +138,7 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         if role_can_thiet and user_info['role'] != role_can_thiet:
             st.error("🚫 Bạn không có quyền truy cập khu vực này!")
             return False
-        kiem_tra_ban_quyen() 
+        # KHÔNG GỌI st.stop() Ở ĐÂY NỮA. Cho phép vào nhà thoải mái!
         return True
 
 def nut_dang_xuat():
@@ -156,7 +154,7 @@ def render_ban_quyen():
     st.sidebar.caption("🔰 **BẢN QUYỀN SÁNG CHẾ**\n\n👨‍💻 Tác giả: Lý Hoàng Anh\n📞 Zalo: 0969969189\n📧 hoanganhcbdk@gmail.com")
 
 # ==========================================
-# 1. TRANG CHỦ (LANDING PAGE) TỐI GIẢN
+# 1. TRANG CHỦ (LANDING PAGE) 
 # ==========================================
 if st.session_state['current_view'] == "landing_page":
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -184,10 +182,9 @@ if st.session_state['current_view'] == "landing_page":
     st.caption("<div style='text-align: center;'>Phần mềm được phát triển bởi: Lý Hoàng Anh | SĐT: 0969969189</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. KHÔNG GIAN HỌC SINH
+# 2. KHÔNG GIAN HỌC SINH (Luôn mở cho học sinh nhắn tin)
 # ==========================================
 elif st.session_state['current_view'] == "student_view":
-    kiem_tra_ban_quyen()
     if st.sidebar.button("⬅️ Quay lại Trang chủ", use_container_width=True):
         st.session_state['current_view'] = "landing_page"
         st.rerun()
@@ -272,12 +269,15 @@ elif st.session_state['current_view'] == "student_view":
             elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang đọc và soạn tin nhắn trả lời. Em chờ chút nhé!")
 
 # ==========================================
-# 3. KHÔNG GIAN GIÁO VIÊN
+# 3. KHÔNG GIAN GIÁO VIÊN (Áp dụng Khóa Mềm)
 # ==========================================
 elif st.session_state['current_view'] == "teacher_view":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         user_id = st.session_state['current_user']
         user_info = st.session_state['users'][user_id]
+        
+        # KIỂM TRA BẢN QUYỀN (Soft-lock)
+        phan_mem_hoat_dong = kiem_tra_ban_quyen_mem()
         
         if user_info.get('avatar'):
             st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{user_info["avatar"]}" width="80" style="border-radius: 50%;"></div>', unsafe_allow_html=True)
@@ -290,7 +290,6 @@ elif st.session_state['current_view'] == "teacher_view":
             "👤 Hồ sơ cá nhân & Cài đặt"
         ])
         
-        # TẢI NGẦM ZALO-LIKE (Ẩn Checkbox)
         if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)" and HAS_AUTOREFRESH:
             st_autorefresh(interval=6000, limit=None, key="gv_refresh") 
                 
@@ -298,6 +297,12 @@ elif st.session_state['current_view'] == "teacher_view":
         render_ban_quyen()
 
         st.title("👨‍🏫 KHÔNG GIAN LÀM VIỆC GIÁO VIÊN")
+        
+        # CẢNH BÁO BẢN QUYỀN TRÊN CÙNG NẾU HẾT HẠN
+        if not phan_mem_hoat_dong:
+            st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN CHÍNH THỨC.")
+            st.warning("Thầy/Cô vẫn có thể xem được tin nhắn của học sinh để nắm tình hình, nhưng tính năng **AI Cố vấn** và **Gửi phản hồi** đã bị khóa. Vui lòng liên hệ Admin (BGH) hoặc Tác giả Lý Hoàng Anh (0969969189) để gia hạn.")
+            st.markdown("---")
         
         ca_cua_toi = {k: v for k, v in st.session_state['database'].items() if v['gv_phu_trach'] == user_id}
         ca_cho = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]}
@@ -329,58 +334,68 @@ elif st.session_state['current_view'] == "teacher_view":
                                     st.markdown(f"**{tn['nguoi_gui']}**")
                                     st.write(tn['noi_dung'])
                         
-                        # AI NHẬN DIỆN TIN NHẮN MỚI
-                        ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if ca['trang_thai'] == "HS vừa nhắn lại" else "🧠 Yêu cầu AI Cố vấn ca này"
-                        
-                        if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if ca['trang_thai'] == "HS vừa nhắn lại" else "secondary"):
-                            with st.spinner("AI đang ghi nhớ bối cảnh và phân tích diễn biến mới..."):
-                                # NÃO BỘ AI "NHỚ DAI": Tách biệt toàn bộ lịch sử và tin nhắn vừa nhận
-                                lich_su_toan_bo = ""
-                                for t in ca['tin_nhan'][:-1]:
-                                    lich_su_toan_bo += f"{t['nguoi_gui']}: {t['noi_dung']}\n"
-                                
-                                tin_nhan_moi_nhat = ca['tin_nhan'][-1]['noi_dung']
-                                
-                                prompt = f"""Bạn là Chuyên gia Tâm lý Học đường xuất sắc. Hãy đọc TOÀN BỘ lịch sử câu chuyện dưới đây để hiểu rõ bối cảnh và tình trạng học sinh:
-                                
-                                === LỊCH SỬ CÂU CHUYỆN TỪ ĐẦU ===
-                                {lich_su_toan_bo if lich_su_toan_bo else 'Đây là lần đầu tiên học sinh nhắn tin.'}
-                                
-                                === DIỄN BIẾN MỚI NHẤT ===
-                                Học sinh vừa phản hồi thêm: "{tin_nhan_moi_nhat}"
-                                
-                                Hãy GHI NHỚ LỊCH SỬ trên, nhưng tư vấn tập trung vào DIỄN BIẾN MỚI NHẤT theo cấu trúc:
-                                [RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao (Đánh giá lại dựa trên phản hồi mới nhất. Nếu học sinh cảm ơn, thấy ổn hơn, hãy giảm rủi ro xuống Thấp).
-                                [1. PHÂN TÍCH TIN NHẮN MỚI]: (Nhận xét cảm xúc của em ấy hiện tại dựa trên câu trả lời mới).
-                                [2. GỢI Ý CÂU TRẢ LỜI CHO GIÁO VIÊN]: (Viết câu nói tiếp nối câu chuyện, thể hiện sự thấu hiểu toàn bộ bối cảnh, tuyệt đối không hỏi lại những gì đã kể)."""
-                                
-                                try:
-                                    payload = {"contents": [{"parts": [{"text": prompt}]}]}
-                                    headers = {'Content-Type': 'application/json'}
-                                    thanh_cong = False
-                                    keys_luot_nay = danh_sach_keys.copy()
-                                    random.shuffle(keys_luot_nay)
-                                    for key_hien_tai in keys_luot_nay:
-                                        res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key_hien_tai}", json=payload, headers=headers)
-                                        if res.status_code == 200:
-                                            res_text = res.json()['candidates'][0]['content']['parts'][0]['text']
-                                            ca['ai_phan_tich'] = res_text
-                                            if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
-                                            elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
-                                            else: ca['muc_do_rui_ro'] = "Thấp"
-                                            thanh_cong = True
-                                            break  
-                                    if not thanh_cong: ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG QUÁ TẢI. Chờ 15 giây!"
+                        # KIỂM TRA BẢN QUYỀN TRƯỚC KHI HIỆN Ô TRẢ LỜI
+                        if not phan_mem_hoat_dong:
+                            st.error("🔒 KHÓA TÍNH NĂNG: Vui lòng gia hạn bản quyền để phản hồi học sinh.")
+                            key_kich_hoat = st.text_input("Nhập Mã Bản Quyền (License Key) tại đây để mở khóa:", key=f"key_{ma_ca}")
+                            if st.button("🚀 Kích hoạt ngay", type="primary", key=f"btn_{ma_ca}"):
+                                if key_kich_hoat in st.session_state['licenses'] and st.session_state['licenses'][key_kich_hoat]['active']:
+                                    st.session_state['config']['active_key'] = key_kich_hoat
                                     luu_du_lieu_len_may()
+                                    st.success("🎉 Kích hoạt thành công! Vui lòng tải lại trang.")
                                     st.rerun()
-                                except Exception as e: st.error(f"Lỗi mạng: {e}")
+                                else: st.error("Mã không hợp lệ hoặc đã bị khóa!")
+                        else:
+                            # NẾU CÓ BẢN QUYỀN THÌ CHO PHÉP DÙNG AI VÀ TRẢ LỜI BÌNH THƯỜNG
+                            ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if ca['trang_thai'] == "HS vừa nhắn lại" else "🧠 Yêu cầu AI Cố vấn ca này"
+                            if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if ca['trang_thai'] == "HS vừa nhắn lại" else "secondary"):
+                                with st.spinner("AI đang ghi nhớ bối cảnh và phân tích diễn biến mới..."):
+                                    lich_su_toan_bo = ""
+                                    for t in ca['tin_nhan'][:-1]:
+                                        lich_su_toan_bo += f"{t['nguoi_gui']}: {t['noi_dung']}\n"
                                     
-                        if ca.get('ai_phan_tich'):
-                            if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'): st.warning(ca.get('ai_phan_tich'))
-                            else:
-                                st.markdown("##### ✨ Cố vấn AI")
-                                with st.container(height=200, border=True): st.markdown(ca.get('ai_phan_tich'))
-                                
+                                    tin_nhan_moi_nhat = ca['tin_nhan'][-1]['noi_dung']
+                                    
+                                    prompt = f"""Bạn là Chuyên gia Tâm lý Học đường xuất sắc. Hãy đọc TOÀN BỘ lịch sử câu chuyện dưới đây để hiểu rõ bối cảnh và tình trạng học sinh:
+                                    
+                                    === LỊCH SỬ CÂU CHUYỆN TỪ ĐẦU ===
+                                    {lich_su_toan_bo if lich_su_toan_bo else 'Đây là lần đầu tiên học sinh nhắn tin.'}
+                                    
+                                    === DIỄN BIẾN MỚI NHẤT ===
+                                    Học sinh vừa phản hồi thêm: "{tin_nhan_moi_nhat}"
+                                    
+                                    Hãy GHI NHỚ LỊCH SỬ trên, nhưng tư vấn tập trung vào DIỄN BIẾN MỚI NHẤT theo cấu trúc:
+                                    [RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao
+                                    [1. PHÂN TÍCH TIN NHẮN MỚI]: (Nhận xét cảm xúc của em ấy hiện tại dựa trên câu trả lời mới).
+                                    [2. GỢI Ý CÂU TRẢ LỜI CHO GIÁO VIÊN]: (Viết câu nói tiếp nối câu chuyện, thể hiện sự thấu hiểu)."""
+                                    
+                                    try:
+                                        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                                        headers = {'Content-Type': 'application/json'}
+                                        thanh_cong = False
+                                        keys_luot_nay = danh_sach_keys.copy()
+                                        random.shuffle(keys_luot_nay)
+                                        for key_hien_tai in keys_luot_nay:
+                                            res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key_hien_tai}", json=payload, headers=headers)
+                                            if res.status_code == 200:
+                                                res_text = res.json()['candidates'][0]['content']['parts'][0]['text']
+                                                ca['ai_phan_tich'] = res_text
+                                                if "Cao" in res_text[:80]: ca['muc_do_rui_ro'] = "Cao (Khẩn cấp)"
+                                                elif "Trung bình" in res_text[:80]: ca['muc_do_rui_ro'] = "Trung bình"
+                                                else: ca['muc_do_rui_ro'] = "Thấp"
+                                                thanh_cong = True
+                                                break  
+                                        if not thanh_cong: ca['ai_phan_tich'] = "⏳ HỆ THỐNG ĐANG QUÁ TẢI. Chờ 15 giây!"
+                                        luu_du_lieu_len_may()
+                                        st.rerun()
+                                    except Exception as e: st.error(f"Lỗi mạng: {e}")
+                                        
+                            if ca.get('ai_phan_tich'):
+                                if "🚨" in ca.get('ai_phan_tich') or "⏳" in ca.get('ai_phan_tich'): st.warning(ca.get('ai_phan_tich'))
+                                else:
+                                    st.markdown("##### ✨ Cố vấn AI")
+                                    with st.container(height=200, border=True): st.markdown(ca.get('ai_phan_tich'))
+                                    
                             gv_tra_loi = st.text_area("Soạn trả lời / Xác nhận lịch hẹn:", height=80, key=f"txt_{ma_ca}")
                             col_btn1, col_btn2 = st.columns(2)
                             if col_btn1.button("✅ Gửi trả lời & Đang theo dõi", type="primary", key=f"gui_{ma_ca}"):
@@ -436,15 +451,18 @@ elif st.session_state['current_view'] == "teacher_view":
 elif st.session_state['current_view'] == "admin_view":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
         user_hien_tai = st.session_state['current_user']
+        phan_mem_hoat_dong = kiem_tra_ban_quyen_mem()
         
         st.sidebar.markdown(f"⚙️ **Đang đăng nhập:** {st.session_state['users'][user_hien_tai]['name']}")
         st.sidebar.markdown("---")
         
-        danh_muc_admin = ["📊 Thống kê Tổng quan", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo", "🔐 Đổi Mật khẩu Admin", "🔑 Kích hoạt Bản quyền"]
+        danh_muc_admin = ["📊 Thống kê Tổng quan", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo Excel", "🔐 Đổi Mật khẩu Admin"]
         
-        # HIỆN MENU ĐẶC BIỆT NẾU LÀ TÁC GIẢ HOANGANH_DEV
-        if user_hien_tai == "hoanganh_dev":
-            danh_muc_admin.append("🛠️ NHÀ PHÁT TRIỂN: Quản lý Key các Trường")
+        # Admin BGH có nút Kích hoạt nếu hết hạn
+        if user_hien_tai == "admin": danh_muc_admin.append("🔑 Quản lý Bản Quyền (Gia hạn)")
+        
+        # Tài khoản tác giả có nút Quản lý các trường
+        if user_hien_tai == "hoanganh_dev": danh_muc_admin.append("🛠️ NHÀ PHÁT TRIỂN: Quản lý Key các Trường")
             
         menu_admin = st.sidebar.radio("🧭 DANH MỤC QUẢN TRỊ", danh_muc_admin)
         
@@ -455,8 +473,11 @@ elif st.session_state['current_view'] == "admin_view":
 
         st.title("⚙️ TRUNG TÂM QUẢN TRỊ HỆ THỐNG")
         
-        # ... Các chức năng cũ của Admin giữ nguyên (Thống kê, Quản lý NS, Xuất Báo Cáo...) ...
-        # (Để ngắn gọn tin nhắn, mình tóm tắt lại các tab cũ. Thầy yên tâm là lúc dán code nó vẫn chạy bình thường)
+        if not phan_mem_hoat_dong and user_hien_tai != "hoanganh_dev":
+            st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN CHÍNH THỨC.")
+            st.warning("Vui lòng vào mục **🔑 Quản lý Bản Quyền** ở menu bên trái để nhập mã gia hạn.")
+            st.markdown("---")
+            
         tong_ca = len(st.session_state['database'])
         ca_khan_cap = len([ca for ca in st.session_state['database'].values() if "Cao" in ca['muc_do_rui_ro']])
         ca_tb = len([ca for ca in st.session_state['database'].values() if "Trung bình" in ca['muc_do_rui_ro']])
@@ -540,8 +561,8 @@ elif st.session_state['current_view'] == "admin_view":
                     st.success("Đổi mật khẩu thành công!")
 
         # MỤC MỚI: BGH KÍCH HOẠT KEY
-        elif menu_admin == "🔑 Kích hoạt Bản quyền":
-            st.info("Nhập Mã Bản Quyền (License Key) do Tác giả Lý Hoàng Anh cấp để kích hoạt hệ thống cho nhà trường.")
+        elif menu_admin == "🔑 Quản lý Bản Quyền (Gia hạn)":
+            st.info("Nhập Mã Bản Quyền (License Key) do Tác giả Lý Hoàng Anh cấp để gia hạn hệ thống cho nhà trường.")
             current_key = st.session_state['config'].get('active_key', '')
             st.write(f"**Mã đang dùng hiện tại:** `{current_key}`")
             
@@ -560,7 +581,6 @@ elif st.session_state['current_view'] == "admin_view":
             st.error("👑 KHU VỰC QUẢN TRỊ TỐI CAO - CHỈ DÀNH CHO TÁC GIẢ HOÀNG ANH")
             st.write("**Danh sách các trường đang sử dụng phần mềm:**")
             
-            # Hiển thị danh sách Key
             for key, data in st.session_state['licenses'].items():
                 trang_thai = "🟢 Đang hoạt động" if data['active'] else "🔴 Đã Khóa"
                 with st.expander(f"Trường: {data['school_name']} | Mã: {key} | Hết hạn: {data['expiry_date']} | {trang_thai}"):

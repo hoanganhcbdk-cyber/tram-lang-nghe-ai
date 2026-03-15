@@ -19,63 +19,25 @@ except Exception as e:
     st.error(f"❌ Lỗi cấu hình Secrets: {e}")
     st.stop()
 
-# MÃ CHỐNG SPAM (Chỉ học sinh biết mã này mới được gửi)
 MA_BAO_MAT_TRUONG = "HSP2026" 
     
-st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="Trạm Lắng Nghe AI - Bản Chuyên Nghiệp", page_icon="🏫", layout="wide", initial_sidebar_state="expanded")
 
-# ==========================================
-# HỆ THỐNG THÔNG BÁO THỜI GIAN THỰC (TELEGRAM BOT)
-# ==========================================
 def gui_thong_bao_ve_dien_thoai(tin_nhan_bao_cao):
-    """
-    Hàm này sẽ tự động bắn thông báo về điện thoại của GV qua Telegram.
-    (Giám khảo hỏi thì thầy mở đoạn code này ra để chứng minh hệ thống có tính năng Real-time Notification)
-    """
     try:
-        # Lấy Token từ Secrets (Sau này thầy cài đặt sẽ điền vào Streamlit)
         bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", "")
         chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "")
         if bot_token and chat_id:
             url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
             payload = {"chat_id": chat_id, "text": tin_nhan_bao_cao, "parse_mode": "Markdown"}
             requests.post(url, json=payload, timeout=3)
-    except:
-        pass # Nếu chưa cài đặt Telegram thì hệ thống vẫn chạy bình thường, không báo lỗi
+    except: pass
 
-# ==========================================
-# TỰ ĐỘNG LÀM MỚI TRANG (AUTO-REFRESH) KÍN ĐÁO
-# ==========================================
-# Dùng component HTML ẩn để tự F5 trang web mỗi 30 giây (chỉ chạy ở Tab GV/Admin để không ảnh hưởng HS)
 def tu_dong_cap_nhat_du_lieu(giay=30):
     st.components.v1.html(
-        f"""
-        <script>
-        setTimeout(function() {{
-            window.parent.location.reload();
-        }}, {giay * 1000});
-        </script>
-        """,
+        f"<script>setTimeout(function() {{ window.parent.location.reload(); }}, {giay * 1000});</script>",
         height=0, width=0,
     )
-
-# ==========================================
-# 🔰 THANH BÊN (SIDEBAR) - THÔNG TIN BẢN QUYỀN
-# ==========================================
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712139.png", width=65) 
-    st.markdown("### 🔰 THÔNG TIN BẢN QUYỀN")
-    st.markdown("""
-    **Hệ thống Trạm Lắng Nghe AI** Ứng dụng Trí tuệ nhân tạo thế hệ mới hỗ trợ tư vấn tâm lý học đường.
-    
-    👨‍💻 **Tác giả:** Thầy Lý Hoàng Anh
-    📍 **Đơn vị:** Hoàng Su Phì
-    📞 **Hotline/Zalo:** 0969969189
-    📧 **Email:** hoanganhcbdk@gmail.com
-    """)
-    st.markdown("---")
-    st.info("💡 **Tính năng nổi bật:**\n- Chống Spam bằng Mã bảo mật\n- Lưu phiên đăng nhập 24h\n- AI xử lý đa luồng\n- Thông báo thời gian thực")
-    st.caption("© 2026 Bản quyền thuộc về tác giả Lý Hoàng Anh.")
 
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
@@ -114,22 +76,67 @@ if 'he_thong_da_khoi_dong' not in st.session_state:
 if 'current_user' not in st.session_state: st.session_state['current_user'] = None
 danh_sach_gv = {k: v['name'] for k, v in st.session_state['users'].items() if v['role'] == 'teacher'}
 
+def kiem_tra_dang_nhap(role_can_thiet=None):
+    if 'token_login' in st.query_params:
+        user_luu = st.query_params['token_login']
+        if user_luu in st.session_state['users']:
+            st.session_state['current_user'] = user_luu
+
+    if not st.session_state['current_user']:
+        st.warning("🔒 Yêu cầu đăng nhập tài khoản Cán bộ/Giáo viên.")
+        u = st.text_input("Tài khoản", key=f"user_{role_can_thiet}")
+        p = st.text_input("Mật khẩu", type="password", key=f"pass_{role_can_thiet}")
+        nho_mat_khau = st.checkbox("Ghi nhớ thiết bị này (Tự động đăng nhập lần sau)", key=f"nho_{role_can_thiet}")
+        
+        if st.button("Đăng nhập", key=f"login_btn_{role_can_thiet}"):
+            if u in st.session_state['users'] and st.session_state['users'][u]['pass'] == p:
+                st.session_state['current_user'] = u
+                if nho_mat_khau: st.query_params['token_login'] = u
+                st.rerun()
+            else: st.error("Sai tài khoản hoặc mật khẩu!")
+        return False
+    else:
+        user_info = st.session_state['users'][st.session_state['current_user']]
+        if role_can_thiet and user_info['role'] != role_can_thiet:
+            st.error("🚫 Bạn không có quyền truy cập khu vực này!")
+            return False
+        col_info, col_btn = st.columns([8, 2])
+        col_info.write(f"👤 Đang đăng nhập: **{user_info['name']}**")
+        if col_btn.button("🚪 Đăng xuất", key=f"logout_btn_{role_can_thiet}"):
+            st.session_state['current_user'] = None
+            if 'token_login' in st.query_params: del st.query_params['token_login']
+            st.rerun()
+        return True
+
 # ==========================================
-# GIAO DIỆN CHÍNH
+# 🔰 BỐ CỤC MỚI: THANH MENU BÊN (SIDEBAR)
+# ==========================================
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712139.png", width=60)
+    st.markdown("### 🧭 MENU LÀM VIỆC")
+    
+    # Thiết kế Menu dọc thay cho Tab ngang
+    menu_chinh = st.radio("Chọn không gian của bạn:", [
+        "🎓 1. Cổng dành cho Học Sinh", 
+        "👨‍🏫 2. Không gian Giáo Viên", 
+        "⚙️ 3. Trung tâm Quản lý (BGH)"
+    ])
+    
+    st.markdown("<br><br><br>", unsafe_allow_html=True) # Tạo khoảng trống đẩy bản quyền xuống dưới
+    st.markdown("---")
+    st.markdown("###### 🔰 BẢN QUYỀN SÁNG CHẾ")
+    st.caption("👨‍💻 **Tác giả:** Thầy Lý Hoàng Anh\n\n📍 **Đơn vị:** Hoàng Su Phì\n\n📞 **Hotline/Zalo:** 0969969189\n\n© 2026 Mọi hành vi sao chép không xin phép đều vi phạm bản quyền.")
+
+# ==========================================
+# HIỂN THỊ NỘI DUNG CHÍNH DỰA THEO MENU
 # ==========================================
 st.title("🏫 HỆ THỐNG TƯ VẤN TÂM LÝ & QUẢN TRỊ HỌC ĐƯỜNG BẰNG AI")
 st.markdown("---")
 
-tab_hoc_sinh, tab_giao_vien, tab_quan_ly = st.tabs([
-    "🎓 1. Cổng dành cho Học Sinh", 
-    "👨‍🏫 2. Không gian làm việc Giáo Viên", 
-    "⚙️ 3. Trung tâm Quản lý (Admin)"
-])
-
-# ==========================================
-# TAB 1: CỔNG HỌC SINH 
-# ==========================================
-with tab_hoc_sinh:
+# ------------------------------------------
+# PHẦN 1: CỔNG HỌC SINH
+# ------------------------------------------
+if menu_chinh == "🎓 1. Cổng dành cho Học Sinh":
     st.info("""
     **👋 CHÀO MỪNG CÁC EM ĐẾN VỚI TRẠM LẮNG NGHE!** Nơi đây, mọi tâm sự của em đều được giữ bí mật tuyệt đối. Em có thể chọn 1 trong 2 hình thức:
     * 💬 **Tư vấn Gián tiếp (Nhắn tin ẩn danh):** Em chỉ cần nhắn tin trên web này, thầy cô sẽ phân tích và phản hồi lại bằng tin nhắn. Không ai biết em là ai nếu em không ghi tên.
@@ -152,7 +159,7 @@ with tab_hoc_sinh:
         ngay_hen = ""
         gio_hen = ""
         if hinh_thuc_tv == "🤝 Tư vấn Trực tiếp (Hẹn gặp)":
-            st.warning("📍 Thầy cô sẽ đợi em tại Phòng Tâm lý tầng 1. Em hãy chọn thời gian em rảnh nhé:")
+            st.warning("📍 Thầy cô sẽ đợi em tại Phòng Tâm lý. Em hãy chọn thời gian em rảnh nhé:")
             col_ngay, col_gio = st.columns(2)
             ngay_hen = col_ngay.date_input("Chọn ngày hẹn:")
             gio_hen = col_gio.time_input("Chọn giờ hẹn (VD: 14:30):")
@@ -180,8 +187,7 @@ with tab_hoc_sinh:
                 }
                 luu_du_lieu_len_may()
                 
-                # TÍNH NĂNG MỚI: KÍCH HOẠT HỆ THỐNG THÔNG BÁO VỀ ĐIỆN THOẠI
-                thong_bao = f"🚨 CÓ CA TƯ VẤN MỚI!\n- Mã ca: {ma_bi_mat}\n- Lớp: {hs_khoi_lop}\n- Cảm xúc: {hs_cam_xuc}\n- Nội dung: {tam_su_input[:50]}..."
+                thong_bao = f"🚨 CÓ CA TƯ VẤN MỚI!\n- Mã ca: {ma_bi_mat}\n- Lớp: {hs_khoi_lop}\n- Cảm xúc: {hs_cam_xuc}\n- Hình thức: {hinh_thuc_tv}"
                 gui_thong_bao_ve_dien_thoai(thong_bao)
                 
                 st.success(f"✅ Gửi thành công! Mã bí mật để em xem lại tin nhắn là: **{ma_bi_mat}**")
@@ -198,8 +204,8 @@ with tab_hoc_sinh:
             ten_gv_phu_trach = st.session_state['users'][ca['gv_phu_trach']]['name']
             
             st.markdown(f"### Cuộc trò chuyện với {ten_gv_phu_trach}")
-            if ca['hinh_thuc'] == "🤝 Tư vấn Trực tiếp (Hẹn gặp)":
-                st.warning(f"⏰ **Lịch hẹn gặp:** {ca['lich_hen']} tại Phòng Tâm lý.")
+            if "Trực tiếp" in ca.get('hinh_thuc', ''):
+                st.warning(f"⏰ **Lịch hẹn gặp:** {ca.get('lich_hen', 'Chưa rõ')} tại Phòng Tâm lý.")
             
             with st.container(height=350, border=True):
                 for tn in ca['tin_nhan']:
@@ -214,62 +220,19 @@ with tab_hoc_sinh:
                     ca['trang_thai'] = "HS vừa nhắn lại" 
                     ca['ai_phan_tich'] = None 
                     luu_du_lieu_len_may()
-                    
-                    # CẢNH BÁO ĐIỆN THOẠI KHI HS NHẮN LẠI
                     gui_thong_bao_ve_dien_thoai(f"🔔 Học sinh ca {st.session_state['ca_dang_xem']} vừa nhắn tin phản hồi!")
-                    
                     st.rerun()
             elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang soạn tin nhắn trả lời em. Em chờ chút nhé!")
         elif 'ca_dang_xem' in st.session_state: st.error("Không tìm thấy mã này. Em nhập đúng chưa?")
 
-# ==========================================
-# HÀM KIỂM TRA ĐĂNG NHẬP & LƯU PHIÊN (GHI NHỚ MẬT KHẨU)
-# ==========================================
-def kiem_tra_dang_nhap(role_can_thiet=None):
-    # Tính năng Nhớ Mật Khẩu (Auto Login qua URL Token)
-    if 'token_login' in st.query_params:
-        user_luu = st.query_params['token_login']
-        if user_luu in st.session_state['users']:
-            st.session_state['current_user'] = user_luu
-
-    if not st.session_state['current_user']:
-        st.warning("🔒 Yêu cầu đăng nhập tài khoản Cán bộ/Giáo viên.")
-        u = st.text_input("Tài khoản", key=f"user_{role_can_thiet}")
-        p = st.text_input("Mật khẩu", type="password", key=f"pass_{role_can_thiet}")
-        nho_mat_khau = st.checkbox("Ghi nhớ thiết bị này (Tự động đăng nhập lần sau)", key=f"nho_{role_can_thiet}")
-        
-        if st.button("Đăng nhập", key=f"login_btn_{role_can_thiet}"):
-            if u in st.session_state['users'] and st.session_state['users'][u]['pass'] == p:
-                st.session_state['current_user'] = u
-                if nho_mat_khau:
-                    # Gắn token vào URL để lưu phiên đăng nhập
-                    st.query_params['token_login'] = u
-                st.rerun()
-            else: st.error("Sai tài khoản hoặc mật khẩu!")
-        return False
-    else:
-        user_info = st.session_state['users'][st.session_state['current_user']]
-        if role_can_thiet and user_info['role'] != role_can_thiet:
-            st.error("🚫 Bạn không có quyền truy cập khu vực này!")
-            return False
-        col_info, col_btn = st.columns([8, 2])
-        col_info.write(f"👤 Đang đăng nhập: **{user_info['name']}**")
-        if col_btn.button("🚪 Đăng xuất", key=f"logout_btn_{role_can_thiet}"):
-            st.session_state['current_user'] = None
-            if 'token_login' in st.query_params: del st.query_params['token_login'] # Xóa token
-            st.rerun()
-        return True
-
-# ==========================================
-# TAB 2: KHÔNG GIAN LÀM VIỆC CỦA GIÁO VIÊN 
-# ==========================================
-with tab_giao_vien:
+# ------------------------------------------
+# PHẦN 2: KHÔNG GIAN GIÁO VIÊN
+# ------------------------------------------
+elif menu_chinh == "👨‍🏫 2. Không gian Giáo Viên":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         
-        # BẬT TÍNH NĂNG TỰ ĐỘNG CẬP NHẬT TRANG (Dành cho GV để nhận tin nhắn mới)
         auto_refresh = st.checkbox("🔄 Bật chế độ Tự động làm mới dữ liệu (Tự F5 sau mỗi 30 giây để kiểm tra tin nhắn mới)", value=True)
-        if auto_refresh:
-            tu_dong_cap_nhat_du_lieu(30)
+        if auto_refresh: tu_dong_cap_nhat_du_lieu(30)
             
         user_id = st.session_state['current_user']
         st.header(f"Bảng điều khiển Tư vấn của {st.session_state['users'][user_id]['name']}")
@@ -293,15 +256,19 @@ with tab_giao_vien:
         if loc_ca == "Chỉ hiện ca Rủi ro Cao/Khẩn cấp":
             ca_cho_xu_ly = {k: v for k, v in ca_cho_xu_ly.items() if "Cao" in v['muc_do_rui_ro']}
         elif loc_ca == "Chỉ hiển thị ca Trực tiếp (Hẹn gặp)":
-            ca_cho_xu_ly = {k: v for k, v in ca_cho_xu_ly.items() if "Trực tiếp" in v['hinh_thuc']}
+            # Fix lỗi get() cho các ca cũ
+            ca_cho_xu_ly = {k: v for k, v in ca_cho_xu_ly.items() if "Trực tiếp" in v.get('hinh_thuc', '')}
             
         st.subheader(f"🔴 CÁC CA ĐANG CHỜ XỬ LÝ ({len(ca_cho_xu_ly)})")
         if not ca_cho_xu_ly: st.write("✅ Tuyệt vời, bạn không có ca tồn đọng nào!")
         else:
             for ma_ca, ca in ca_cho_xu_ly.items():
-                with st.expander(f"[{ca['hinh_thuc']}] Ca {ma_ca} | Lớp: {ca['lop']} | Báo động: {ca['muc_do_rui_ro']}", expanded=True):
-                    if ca['hinh_thuc'] == "🤝 Tư vấn Trực tiếp (Hẹn gặp)":
-                        st.error(f"⏰ **Học sinh yêu cầu hẹn gặp mặt lúc:** {ca['lich_hen']}")
+                # Xử lý tương thích ngược cho dữ liệu cũ không có 'hinh_thuc'
+                hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Tư vấn Gián tiếp (Nhắn tin)')
+                
+                with st.expander(f"[{hinh_thuc_hien_tai}] Ca {ma_ca} | Lớp: {ca['lop']} | Báo động: {ca['muc_do_rui_ro']}", expanded=True):
+                    if "Trực tiếp" in hinh_thuc_hien_tai:
+                        st.error(f"⏰ **Học sinh yêu cầu hẹn gặp mặt lúc:** {ca.get('lich_hen', 'Chưa xác định')}")
                     
                     st.write("**Nội dung cuộc trò chuyện:**")
                     with st.container(height=250, border=True):
@@ -317,10 +284,8 @@ with tab_giao_vien:
                             
                             prompt = f"""Dưới đây là lịch sử cuộc trò chuyện tâm lý học đường:
                             {lich_su}
-                            
                             TIN NHẮN MỚI NHẤT học sinh vừa gửi là: "{tin_nhan_moi_nhat}"
-                            Yêu cầu học sinh: {ca['hinh_thuc']}.
-                            
+                            Yêu cầu học sinh: {hinh_thuc_hien_tai}.
                             Dựa vào lịch sử để hiểu bối cảnh, nhưng hãy TRỌNG TÂM PHÂN TÍCH tin nhắn MỚI NHẤT theo cấu trúc:
                             [RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao
                             [1. PHÂN TÍCH TIN NHẮN MỚI NHẤT]: ...
@@ -375,7 +340,7 @@ with tab_giao_vien:
                             ca['trang_thai'] = "GV đã phản hồi"
                             luu_du_lieu_len_may()
                             st.rerun()
-                        if ca['hinh_thuc'] == "🤝 Tư vấn Trực tiếp (Hẹn gặp)":
+                        if "Trực tiếp" in hinh_thuc_hien_tai:
                             if col_btn2.button("📅 Gửi tin nhắn & Chốt lịch hẹn", key=f"chot_{ma_ca}"):
                                 ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
                                 ca['trang_thai'] = "Đã chốt lịch hẹn"
@@ -385,22 +350,21 @@ with tab_giao_vien:
         st.markdown("---")
         st.subheader(f"🟢 CÁC CA ĐANG THEO DÕI / ĐÃ LÊN LỊCH ({len(ca_da_phan_hoi)})")
         for ma_ca, ca in ca_da_phan_hoi.items():
-            with st.expander(f"Ca {ma_ca} | Trạng thái: {ca['trang_thai']} | {ca['hinh_thuc']}"):
+            hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Tư vấn Gián tiếp (Nhắn tin)')
+            with st.expander(f"Ca {ma_ca} | Trạng thái: {ca['trang_thai']} | {hinh_thuc_hien_tai}"):
                 with st.container(height=200, border=True):
                         for tn in ca['tin_nhan']:
                             with st.chat_message("user" if tn['nguoi_gui'] == "Học sinh" else "assistant"):
                                 st.markdown(f"**{tn['nguoi_gui']}**")
                                 st.write(tn['noi_dung'])
 
-# ==========================================
-# TAB 3: TRUNG TÂM QUẢN LÝ (BGH)
-# ==========================================
-with tab_quan_ly:
+# ------------------------------------------
+# PHẦN 3: TRUNG TÂM QUẢN LÝ (ADMIN)
+# ------------------------------------------
+elif menu_chinh == "⚙️ 3. Trung tâm Quản lý (BGH)":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
-        # BẬT TÍNH NĂNG TỰ ĐỘNG CẬP NHẬT TRANG
         auto_refresh_admin = st.checkbox("🔄 Bật chế độ Tự động làm mới dữ liệu (Auto-Refresh)", value=True)
-        if auto_refresh_admin:
-            tu_dong_cap_nhat_du_lieu(30)
+        if auto_refresh_admin: tu_dong_cap_nhat_du_lieu(30)
             
         st.header("⚙️ QUẢN TRỊ HỆ THỐNG TỔNG THỂ")
         
@@ -477,7 +441,6 @@ with tab_quan_ly:
         if tong_ca > 0:
             st.markdown("---")
             st.subheader("📥 Trích xuất Hồ sơ Tư vấn (Phiên bản Chuẩn hóa)")
-            st.info("💡 Mẫu báo cáo đã được thiết kế lại để khớp với Biểu mẫu đánh giá Tâm lý học đường. Thầy cô có thể tải về và in ra nộp lưu trữ.")
             du_lieu_xuat = []
             for ma_ca, ca in st.session_state['database'].items():
                 lich_su_chat = " | ".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
@@ -499,7 +462,6 @@ with tab_quan_ly:
 
             st.markdown("---")
             st.subheader("🗑️ Dọn dẹp Hệ thống (Xóa ca test)")
-            st.warning("Chú ý: Dữ liệu sau khi xóa sẽ biến mất khỏi cơ sở dữ liệu và không thể khôi phục!")
             danh_sach_ca = list(st.session_state['database'].keys())
             ca_can_xoa = st.selectbox("Chọn mã ca cần xóa:", options=danh_sach_ca, format_func=lambda x: f"{x} - Lớp: {st.session_state['database'][x]['lop']} ({st.session_state['database'][x]['thoi_gian']})")
             

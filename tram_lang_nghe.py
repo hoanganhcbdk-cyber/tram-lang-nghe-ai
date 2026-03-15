@@ -6,7 +6,7 @@ import requests
 import base64
 
 # ==========================================
-# CẤU HÌNH HỆ THỐNG & TẢI NGẦM 
+# CẤU HÌNH HỆ THỐNG 
 # ==========================================
 st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
@@ -51,11 +51,11 @@ def luu_du_lieu_len_may():
     except: pass
 
 # ==========================================
-# KHỞI TẠO STATE & ĐỒNG BỘ REAL-TIME
+# KHỞI TẠO STATE & ĐỒNG BỘ 
 # ==========================================
 if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
 if 'current_user' not in st.session_state: st.session_state['current_user'] = None
-if 'last_active_ca' not in st.session_state: st.session_state['last_active_ca'] = None # BỘ NHỚ GHIM DÒNG
+if 'last_active_ca' not in st.session_state: st.session_state['last_active_ca'] = None 
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
     st.session_state['users'] = {
@@ -171,7 +171,7 @@ if st.session_state['current_view'] == "landing_page":
     st.caption("<div style='text-align: center;'>Phần mềm được phát triển bởi: Lý Hoàng Anh | SĐT: 0969969189</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. KHÔNG GIAN HỌC SINH 
+# 2. KHÔNG GIAN HỌC SINH (MỞ KHÓA CHAT LIÊN TỤC)
 # ==========================================
 elif st.session_state['current_view'] == "student_view":
     if st.sidebar.button("⬅️ Quay lại Trang chủ", use_container_width=True):
@@ -181,7 +181,7 @@ elif st.session_state['current_view'] == "student_view":
         
     st.title("🎓 CỔNG KẾT NỐI TÂM LÝ HỌC SINH")
     
-    tab_gui, tab_xem = st.tabs(["📝 Gửi Lời Tâm Sự Mới", "💬 Xem Lời Khuyên Từ Thầy Cô"])
+    tab_gui, tab_xem = st.tabs(["📝 Gửi Lời Tâm Sự Mới", "💬 Phòng Chat Riêng Tư"])
     with tab_gui:
         ma_xac_thuc = st.text_input("🔑 Nhập Mã bảo mật của trường (Hỏi GVCN nếu em không biết):", type="password")
         hs_khoi_lop = st.text_input("Khối/Lớp của em (Không bắt buộc):")
@@ -230,7 +230,7 @@ elif st.session_state['current_view'] == "student_view":
             else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with tab_xem:
-        if HAS_AUTOREFRESH: st_autorefresh(interval=7000, limit=None, key="hs_refresh") 
+        if HAS_AUTOREFRESH: st_autorefresh(interval=6000, limit=None, key="hs_refresh") 
         
         ma_tra_cuu = st.text_input("Nhập Mã bí mật hệ thống đã cấp cho em (VD: HS-1234):")
         if st.button("Truy cập phòng chat"): st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
@@ -248,15 +248,21 @@ elif st.session_state['current_view'] == "student_view":
                         st.markdown(f"**{tn['nguoi_gui']}**")
                         st.write(tn['noi_dung'])
             
-            if ca['trang_thai'] in ["GV đã phản hồi", "Đang theo dõi"]:
-                hs_phan_hoi = st.text_input("Gửi tin nhắn phản hồi của em:")
-                if st.button("Gửi trả lời", key="hs_reply"):
-                    ca['tin_nhan'].append({"nguoi_gui": "Học sinh", "noi_dung": hs_phan_hoi})
-                    ca['trang_thai'] = "HS vừa nhắn lại" 
-                    luu_du_lieu_len_may()
-                    st.rerun()
-            elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang đọc và soạn tin nhắn trả lời. Em chờ chút nhé!")
-            elif ca['trang_thai'] == "Đã đóng ca": st.info("🔒 Hồ sơ tư vấn này đã được thầy cô đóng lại.")
+            # MỞ KHÓA LUÔN KHUNG CHAT - HS KHÔNG CẦN CHỜ GV TRẢ LỜI
+            if ca['trang_thai'] != "Đã đóng ca":
+                if ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: 
+                    st.caption("⏳ Thầy cô đã nhận được tin nhắn và đang xem xét...")
+                
+                hs_phan_hoi = st.text_area("Gửi thêm tin nhắn cho thầy cô (Có thể nhắn nhiều lần liên tục):", height=60)
+                if st.button("Gửi tin nhắn", key="hs_reply"):
+                    if hs_phan_hoi:
+                        ca['tin_nhan'].append({"nguoi_gui": "Học sinh", "noi_dung": hs_phan_hoi})
+                        ca['trang_thai'] = "HS vừa nhắn lại" 
+                        ca['ai_phan_tich'] = None # Xóa phân tích cũ vì có tình tiết mới
+                        luu_du_lieu_len_may()
+                        st.rerun()
+            else:
+                st.info("🔒 Hồ sơ tư vấn này đã được thầy cô đóng lại.")
 
 # ==========================================
 # 3. KHÔNG GIAN GIÁO VIÊN
@@ -292,8 +298,6 @@ elif st.session_state['current_view'] == "teacher_view":
             st.markdown("---")
         
         ca_cua_toi = {k: v for k, v in st.session_state['database'].items() if v['gv_phu_trach'] == user_id}
-        
-        # ĐỊNH NGHĨA LẠI: "Đang mở" bao gồm cả ca GV đã trả lời (để tiện theo dõi tiếp)
         ca_dang_mo = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại", "GV đã phản hồi", "Đang theo dõi"]}
         ca_da_dong = {k: v for k, v in ca_cua_toi.items() if v['trang_thai'] in ["Đã chốt lịch hẹn", "Đã đóng ca"]}
 
@@ -302,24 +306,18 @@ elif st.session_state['current_view'] == "teacher_view":
             
             if not ca_dang_mo: st.success("✅ Hộp thư trống. Thầy/Cô đã xử lý xuất sắc mọi vấn đề!")
             else:
-                # THUẬT TOÁN SẮP XẾP CHỐNG ĐẢO LỘN: Cố định vị trí dựa theo Mã Ca (HS-xxxx)
                 danh_sach_ca_sap_xep = sorted(ca_dang_mo.items(), key=lambda x: x[0], reverse=True)
                 
                 for ma_ca, ca in danh_sach_ca_sap_xep:
                     hinh_thuc_hien_tai = ca.get('hinh_thuc', '💬 Tư vấn Gián tiếp')
-                    
-                    # 1. HIỂN THỊ TIN NHẮN GỐC ĐẦU TIÊN
                     tn_goc = ca['tin_nhan'][0]['noi_dung']
                     tn_rut_gon = tn_goc[:60] + "..." if len(tn_goc) > 60 else tn_goc
                     
-                    # 2. ICON NHẬN DIỆN THÔNG MINH
                     if ca['trang_thai'] == "HS vừa nhắn lại": icon_trang_thai = "🔴 [CÓ TIN MỚI]"
                     elif ca['trang_thai'] == "Chờ xử lý": icon_trang_thai = "🟡 [CA MỚI]"
                     else: icon_trang_thai = "🟢 [Đang theo dõi]"
                     
                     label_thu_gon = f"{icon_trang_thai} {ma_ca} | Lớp {ca['lop']} | Gốc: {tn_rut_gon}"
-                    
-                    # 3. KHÓA CỨNG DÒNG ĐANG LÀM VIỆC
                     is_expanded = (st.session_state['last_active_ca'] == ma_ca)
                     
                     with st.expander(label_thu_gon, expanded=is_expanded):
@@ -343,34 +341,44 @@ elif st.session_state['current_view'] == "teacher_view":
                                     st.rerun()
                                 else: st.error("Mã không hợp lệ hoặc đã bị khóa!")
                         else:
-                            ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if ca['trang_thai'] == "HS vừa nhắn lại" else "🧠 Yêu cầu AI Cố vấn ca này"
+                            ten_nut_ai = "🧠 AI Đọc tin nhắn mới & Tư vấn tiếp" if ca['trang_thai'] in ["HS vừa nhắn lại", "Chờ xử lý"] else "🧠 Yêu cầu AI xem xét lại ca này"
                             
-                            if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if ca['trang_thai'] == "HS vừa nhắn lại" else "secondary"):
+                            if st.button(ten_nut_ai, key=f"ai_{ma_ca}", type="primary" if ca['trang_thai'] in ["HS vừa nhắn lại", "Chờ xử lý"] else "secondary"):
                                 st.session_state['last_active_ca'] = ma_ca 
                                 with st.spinner("AI đang ghi nhớ bối cảnh và phân tích diễn biến mới..."):
-                                    lich_su_toan_bo = ""
-                                    for t in ca['tin_nhan'][:-1]:
-                                        lich_su_toan_bo += f"{t['nguoi_gui']}: {t['noi_dung']}\n"
                                     
-                                    tin_nhan_moi_nhat = ca['tin_nhan'][-1]['noi_dung']
+                                    # LẬP TRÌNH LẠI NÃO BỘ: Gộp tất cả tin nhắn HS chưa được GV trả lời thành "TIN MỚI"
+                                    tin_nhan_moi_lien_tiep = []
+                                    for t in reversed(ca['tin_nhan']):
+                                        if t['nguoi_gui'] == "Học sinh":
+                                            tin_nhan_moi_lien_tiep.insert(0, t['noi_dung'])
+                                        else: break # Gặp tin nhắn của GV thì dừng lùi
                                     
-                                    prompt = f"""Bạn là Chuyên gia Tâm lý Học đường xuất sắc. 
-                                    Dưới đây là toàn bộ lịch sử trò chuyện để bạn nắm rõ bối cảnh câu chuyện:
-                                    === LỊCH SỬ CÂU CHUYỆN TỪ ĐẦU ===
-                                    {lich_su_toan_bo if lich_su_toan_bo else 'Đây là lần đầu tiên học sinh nhắn tin.'}
+                                    cum_tin_nhan_moi = "\n".join(tin_nhan_moi_lien_tiep)
                                     
-                                    === TÌNH HUỐNG HIỆN TẠI (TIN NHẮN MỚI NHẤT TỪ HỌC SINH) ===
-                                    "{tin_nhan_moi_nhat}"
+                                    # Lấy bối cảnh cũ
+                                    lich_su_cu_len = len(ca['tin_nhan']) - len(tin_nhan_moi_lien_tiep)
+                                    lich_su_cu = ""
+                                    if lich_su_cu_len > 0:
+                                        for t in ca['tin_nhan'][:lich_su_cu_len]:
+                                            lich_su_cu += f"{t['nguoi_gui']}: {t['noi_dung']}\n"
                                     
-                                    NHIỆM VỤ CỦA BẠN:
-                                    1. Lịch sử cũ chỉ dùng để bạn hiểu ngữ cảnh. KHÔNG phân tích lại hay hỏi lại những vấn đề cũ đã được giải quyết.
-                                    2. Đánh giá MỨC ĐỘ RỦI RO TÂM LÝ hoàn toàn dựa trên sự thay đổi cảm xúc ở "TIN NHẮN MỚI NHẤT" này. (Ví dụ: Nếu học sinh có thái độ tích cực, đồng tình, an tâm hơn, rủi ro cần giảm xuống mức Thấp. Nếu học sinh tiếp tục bế tắc, giữ mức Trung bình/Cao).
-                                    3. Đưa ra gợi ý trả lời tiếp nối câu chuyện một cách tự nhiên, thấu hiểu.
+                                    prompt = f"""Bạn là Chuyên gia Tâm lý Học đường.
+                                    [THÔNG TIN BỐI CẢNH DÙNG ĐỂ HIỂU CÂU CHUYỆN - KHÔNG PHÂN TÍCH LẠI]:
+                                    {lich_su_cu if lich_su_cu else 'Không có. Đây là những dòng đầu tiên học sinh chia sẻ.'}
                                     
-                                    Trả lời theo đúng format:
+                                    [NHIỆM VỤ BẮT BUỘC KHÔNG THỎA HIỆP]:
+                                    Học sinh vừa nhắn (các) tin nhắn mới như sau:
+                                    "{cum_tin_nhan_moi}"
+                                    
+                                    1. BẠN CHỈ ĐƯỢC PHÉP ĐÁNH GIÁ CẢM XÚC TRONG CỤM TIN NHẮN MỚI NÀY. 
+                                    2. QUÊN ĐI VÀ TUYỆT ĐỐI KHÔNG đem các vấn đề cũ ở bối cảnh (như tự tử, có thai, bạo lực...) ra phân tích lại hoặc dọa dẫm nếu học sinh không đề cập lại trong tin nhắn mới.
+                                    3. Nếu tin nhắn mới chỉ mang tính chất chào hỏi, cảm ơn, vâng dạ, hoặc báo tin vui -> BẮT BUỘC xếp [RỦI RO TÂM LÝ]: Thấp, và đưa ra câu kết thúc ấm áp.
+                                    
+                                    Trả lời theo format:
                                     [RỦI RO TÂM LÝ]: Thấp/Trung bình/Cao
-                                    [1. PHÂN TÍCH TIN NHẮN MỚI]: (Nhận xét ngắn gọn thái độ hiện tại của em ấy).
-                                    [2. GỢI Ý CÂU TRẢ LỜI CHO GIÁO VIÊN]: (Gợi ý 1 câu trả lời chân thành. Đừng nhắc lại y hệt lời học sinh)."""
+                                    [1. PHÂN TÍCH NHANH CẢM XÚC HIỆN TẠI]: ...
+                                    [2. GỢI Ý CÂU GIÁO VIÊN NÊN TRẢ LỜI]: ..."""
                                     
                                     try:
                                         payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -402,16 +410,14 @@ elif st.session_state['current_view'] == "teacher_view":
                             gv_tra_loi = st.text_area("Soạn trả lời / Xác nhận lịch hẹn:", height=80, key=f"txt_{ma_ca}")
                             col_btn1, col_btn2 = st.columns(2)
                             
-                            # NÚT GỬI & ĐANG THEO DÕI (Ca vẫn ở trong Tab này)
-                            if col_btn1.button("✅ Gửi trả lời & Tiếp tục theo dõi", type="primary", key=f"gui_{ma_ca}"):
+                            if col_btn1.button("✅ Gửi trả lời & Giữ ca để theo dõi", type="primary", key=f"gui_{ma_ca}"):
                                 st.session_state['last_active_ca'] = ma_ca 
                                 ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
-                                ca['trang_thai'] = "Đang theo dõi"
+                                ca['trang_thai'] = "GV đã phản hồi"
                                 luu_du_lieu_len_may()
                                 st.rerun()
                                 
-                            # NÚT ĐÓNG CA (Đẩy ca sang Tab Lịch sử)
-                            if col_btn2.button("📦 Xong việc, Đóng hồ sơ ca này", key=f"dong_{ma_ca}"):
+                            if col_btn2.button("📦 Gửi trả lời & Đóng hồ sơ ca này", key=f"dong_{ma_ca}"):
                                 st.session_state['last_active_ca'] = None 
                                 if gv_tra_loi: ca['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi})
                                 ca['trang_thai'] = "Đã đóng ca"

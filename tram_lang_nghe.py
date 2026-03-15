@@ -8,9 +8,9 @@ import base64
 # ==========================================
 # CẤU HÌNH HỆ THỐNG & TẢI NGẦM (ZALO-LIKE)
 # ==========================================
-st.set_page_config(page_title="Hệ thống Tư vấn Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="Hệ thống Quản trị Tâm lý Học đường AI", page_icon="🏫", layout="wide", initial_sidebar_state="auto")
 
-# Khai báo thư viện tải ngầm (Tránh lỗi nếu chưa cài)
+# Khai báo thư viện tải ngầm mượt mà (Không làm nháy màn hình)
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
@@ -27,7 +27,7 @@ try:
         st.stop()
 except: pass
 
-MA_BAO_MAT_TRUONG = "123456" # Đổi mã này cho dễ nhớ
+MA_BAO_MAT_TRUONG = "123456"
 
 # ==========================================
 # KẾT NỐI BỘ NHỚ VĨNH VIỄN (FIREBASE)
@@ -47,28 +47,32 @@ def luu_du_lieu_len_may():
     except: pass
 
 # ==========================================
-# KHỞI TẠO STATE & DỮ LIỆU
+# KHỞI TẠO STATE & ĐỒNG BỘ REAL-TIME (CỐT LÕI MỚI)
 # ==========================================
 if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
 if 'current_user' not in st.session_state: st.session_state['current_user'] = None
 
 if 'he_thong_da_khoi_dong' not in st.session_state:
-    du_lieu_dam_may = tai_du_lieu_tu_may()
-    if du_lieu_dam_may:
-        st.session_state['users'] = du_lieu_dam_may.get('users', {})
-        st.session_state['database'] = du_lieu_dam_may.get('database', {})
-        st.session_state['config'] = du_lieu_dam_may.get('config', {'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=14)).strftime('%d/%m/%Y')}) # Tự động gia hạn 14 ngày dùng thử
-    else:
-        st.session_state['users'] = {
-            'hoanganh_dev': {'pass': 'admin9999', 'role': 'dev', 'name': 'Nhà Phát Triển'}, # TÀI KHOẢN TỐI CAO
-            'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
-            'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Lý Hoàng Anh', 'avatar': ''},
-            'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'Cô Phương (Toán)', 'avatar': ''}
-        }
-        st.session_state['database'] = {}
-        st.session_state['config'] = {'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y')}
-        luu_du_lieu_len_may()
+    st.session_state['users'] = {
+        'hoanganh_dev': {'pass': 'admin9999', 'role': 'admin', 'name': 'Nhà Phát Triển (Tác giả)', 'avatar': ''}, # Quyền admin ngầm
+        'admin': {'pass': 'admin123', 'role': 'admin', 'name': 'Ban Giám Hiệu'},
+        'gv01': {'pass': '1111', 'role': 'teacher', 'name': 'Thầy Lý Hoàng Anh', 'avatar': ''},
+        'gv02': {'pass': '2222', 'role': 'teacher', 'name': 'Cô Phương (Toán)', 'avatar': ''}
+    }
+    st.session_state['database'] = {}
+    st.session_state['config'] = {'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%d/%m/%Y')}
     st.session_state['he_thong_da_khoi_dong'] = True
+
+# 🌟 CÔNG NGHỆ ZALO: LUÔN HÚT DỮ LIỆU MỚI MỖI KHI RERUN (Không bao giờ mất tin nhắn)
+du_lieu_dam_may = tai_du_lieu_tu_may()
+if du_lieu_dam_may:
+    st.session_state['database'] = du_lieu_dam_may.get('database', {})
+    st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
+    for k, v in du_lieu_dam_may.get('users', {}).items():
+        if k in st.session_state['users']: st.session_state['users'][k].update(v)
+        else: st.session_state['users'][k] = v
+else:
+    luu_du_lieu_len_may()
 
 danh_sach_gv = {k: v['name'] for k, v in st.session_state['users'].items() if v['role'] == 'teacher'}
 
@@ -115,7 +119,7 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
         if role_can_thiet and user_info['role'] != role_can_thiet:
             st.error("🚫 Bạn không có quyền truy cập khu vực này!")
             return False
-        kiem_tra_ban_quyen() # CHẶN NẾU HẾT HẠN
+        kiem_tra_ban_quyen() 
         return True
 
 def nut_dang_xuat():
@@ -131,46 +135,14 @@ def render_ban_quyen():
     st.sidebar.caption("🔰 **BẢN QUYỀN SÁNG CHẾ**\n\n👨‍💻 Tác giả: Thầy Lý Hoàng Anh\n📞 Zalo: 0969969189\n📧 hoanganhcbdk@gmail.com\n\n© 2026 Mọi hành vi sao chép đều vi phạm bản quyền.")
 
 # ==========================================
-# 0. KHÔNG GIAN NHÀ PHÁT TRIỂN (CẤP BẢN QUYỀN)
+# 1. TRANG CHỦ (LANDING PAGE) TỐI GIẢN
 # ==========================================
-if st.session_state['current_view'] == "dev_view":
-    if kiem_tra_dang_nhap(role_can_thiet='dev'):
-        st.sidebar.markdown("🛠️ **Đang đăng nhập: NHÀ PHÁT TRIỂN**")
-        nut_dang_xuat()
-        
-        st.title("🛠️ TRUNG TÂM CẤP PHÉP BẢN QUYỀN (Dành riêng cho Tác giả)")
-        st.info("Khu vực này dùng để gia hạn phần mềm cho các trường học khi được chuyển giao công nghệ.")
-        
-        exp_date_str = st.session_state['config'].get('expiry_date', 'Chưa có')
-        st.metric("Hạn sử dụng phần mềm hiện tại của Trường:", exp_date_str)
-        
-        st.markdown("---")
-        st.write("**Tùy chọn Gia hạn hệ thống:**")
-        col1, col2 = st.columns(2)
-        if col1.button("🟢 Gia hạn thêm 1 Năm (365 ngày)", type="primary"):
-            new_date = datetime.datetime.now() + datetime.timedelta(days=365)
-            st.session_state['config']['expiry_date'] = new_date.strftime('%d/%m/%Y')
-            luu_du_lieu_len_may()
-            st.success(f"Đã gia hạn thành công đến ngày: {new_date.strftime('%d/%m/%Y')}")
-            st.rerun()
-            
-        if col2.button("🔴 Khóa hệ thống ngay lập tức (Thu hồi)"):
-            new_date = datetime.datetime.now() - datetime.timedelta(days=1)
-            st.session_state['config']['expiry_date'] = new_date.strftime('%d/%m/%Y')
-            luu_du_lieu_len_may()
-            st.error("Đã thu hồi bản quyền. Hệ thống sẽ bị khóa!")
-            st.rerun()
-
-# ==========================================
-# 1. TRANG CHỦ (LANDING PAGE) TỐI GIẢN CHUYÊN NGHIỆP
-# ==========================================
-elif st.session_state['current_view'] == "landing_page":
-    st.markdown("<br>", unsafe_allow_html=True)
+if st.session_state['current_view'] == "landing_page":
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align: center; color: #1E3A8A; font-weight: 800;'>🏫 HỆ THỐNG QUẢN TRỊ TÂM LÝ HỌC ĐƯỜNG AI</h1>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center; color: #4B5563; margin-bottom: 40px;'>Nền tảng lắng nghe, chia sẻ và phân tích rủi ro tâm lý chuyên sâu</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align: center; color: #4B5563; margin-bottom: 50px;'>Nền tảng Lắng nghe, Chia sẻ và Phân tích Rủi ro Tâm lý Chuyên sâu</h4>", unsafe_allow_html=True)
     
-    # Bỏ hình nền, làm 4 nút to rõ ràng, thêm Nút Tác giả
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.info("### 🎓 Cổng Học Sinh\nNơi các em chia sẻ khó khăn, ẩn danh và an toàn tuyệt đối.")
         if st.button("Học Sinh Truy Cập ➡️", use_container_width=True):
@@ -182,14 +154,9 @@ elif st.session_state['current_view'] == "landing_page":
             st.session_state['current_view'] = "teacher_view"
             st.rerun()
     with col3:
-        st.warning("### ⚙️ Cổng BGH\nThống kê dữ liệu tổng thể và xuất báo cáo chuẩn biểu mẫu GD.")
+        st.warning("### ⚙️ Cổng Quản Lý\nThống kê dữ liệu, xuất báo cáo và Quản lý hệ thống.")
         if st.button("Ban Giám Hiệu Truy Cập ➡️", use_container_width=True):
             st.session_state['current_view'] = "admin_view"
-            st.rerun()
-    with col4:
-        st.error("### 🛠️ Cổng Nhà Phát Triển\nKhu vực cấp phép bản quyền và gia hạn hệ thống cho đối tác.")
-        if st.button("Tác Giả Truy Cập ➡️", use_container_width=True):
-            st.session_state['current_view'] = "dev_view"
             st.rerun()
 
 # ==========================================
@@ -213,11 +180,9 @@ elif st.session_state['current_view'] == "student_view":
         
         gv_duoc_chon = st.selectbox("Em muốn tâm sự với thầy cô nào?", options=list(danh_sach_gv.keys()), format_func=lambda x: danh_sach_gv[x])
         
-        # HIỂN THỊ ẢNH ĐẠI DIỆN GV NẾU CÓ
         ava_gv = st.session_state['users'][gv_duoc_chon].get('avatar', '')
         if ava_gv:
             st.markdown(f'<img src="data:image/png;base64,{ava_gv}" width="80" style="border-radius: 50%; box-shadow: 0px 4px 8px rgba(0,0,0,0.1);">', unsafe_allow_html=True)
-            st.caption("Ảnh đại diện Thầy/Cô")
         
         st.markdown("---")
         hinh_thuc_tv = st.radio("Em muốn thầy cô hỗ trợ theo hình thức nào?", ["💬 Tư vấn Gián tiếp (Nhắn tin ẩn danh trên web)", "🤝 Tư vấn Trực tiếp (Hẹn gặp mặt tại phòng Tâm lý)"])
@@ -226,7 +191,7 @@ elif st.session_state['current_view'] == "student_view":
         if hinh_thuc_tv == "🤝 Tư vấn Trực tiếp (Hẹn gặp mặt tại phòng Tâm lý)":
             c_ngay, c_gio = st.columns(2)
             ngay_hen = c_ngay.date_input("Chọn ngày hẹn:")
-            gio_hen = c_gio.time_input("Chọn giờ hẹn (VD: 14:30):")
+            gio_hen = c_gio.time_input("Chọn giờ hẹn:")
             
         tam_su_input = st.text_area("Hãy kể chi tiết câu chuyện của em để thầy cô hiểu rõ hơn nhé:", height=120)
         
@@ -255,6 +220,9 @@ elif st.session_state['current_view'] == "student_view":
             else: st.warning("Em hãy viết nội dung trước khi gửi.")
 
     with tab_xem:
+        # HS xem tin nhắn cũng tự động tải lại ngầm để thấy cô chat
+        if HAS_AUTOREFRESH: st_autorefresh(interval=5000, limit=None, key="hs_refresh")
+        
         ma_tra_cuu = st.text_input("Nhập Mã bí mật hệ thống đã cấp cho em (VD: HS-1234):")
         if st.button("Truy cập phòng chat"): st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
             
@@ -281,36 +249,31 @@ elif st.session_state['current_view'] == "student_view":
             elif ca['trang_thai'] in ["Chờ xử lý", "HS vừa nhắn lại"]: st.warning("⏳ Thầy cô đang đọc và soạn tin nhắn trả lời. Em chờ chút nhé!")
 
 # ==========================================
-# 3. KHÔNG GIAN GIÁO VIÊN (TỰ LÀM MỚI ZALO-LIKE & UP ẢNH)
+# 3. KHÔNG GIAN GIÁO VIÊN
 # ==========================================
 elif st.session_state['current_view'] == "teacher_view":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         user_id = st.session_state['current_user']
         user_info = st.session_state['users'][user_id]
         
-        # HIỂN THỊ ẢNH ĐẠI DIỆN Ở SIDEBAR
         if user_info.get('avatar'):
             st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{user_info["avatar"]}" width="80" style="border-radius: 50%;"></div>', unsafe_allow_html=True)
-        
         st.sidebar.markdown(f"<div style='text-align:center;'><b>👨‍🏫 {user_info.get('name', 'Giáo viên')}</b></div>", unsafe_allow_html=True)
         st.sidebar.markdown("---")
+        
         menu_gv = st.sidebar.radio("🧭 DANH MỤC QUẢN LÝ", [
             "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)", 
             "🟢 Lịch sử Ca đã chốt", 
             "👤 Hồ sơ cá nhân & Cài đặt"
         ])
         
-        # 🟢 TÍNH NĂNG NHẬN TIN NHẮN TỰ ĐỘNG KHÔNG NHÁY MÀN HÌNH (ZALO-LIKE)
         if menu_gv == "📥 Ca chờ xử lý (Khẩn cấp/Hẹn gặp)":
             if HAS_AUTOREFRESH:
-                auto_refresh = st.sidebar.checkbox("🔄 Bật tải tin nhắn tự động (Mượt)", value=True)
-                if auto_refresh:
-                    # Lệnh này sẽ quét tin nhắn mới mỗi 10 giây mà màn hình không hề giật
-                    st_autorefresh(interval=10000, limit=None, key="zalo_refresh")
+                auto_refresh = st.sidebar.checkbox("🔄 Bật tải tin nhắn ngầm như Zalo", value=True)
+                if auto_refresh: st_autorefresh(interval=5000, limit=None, key="gv_refresh") # 5 Giây hút dữ liệu 1 lần cực mượt
             else:
-                st.sidebar.warning("⚠️ Chưa cài thư viện tải ngầm. Bấm nút dưới để cập nhật tin mới:")
-                if st.sidebar.button("🔄 Cập nhật hộp thư", use_container_width=True): tai_du_lieu_tu_may()
-
+                st.sidebar.warning("⚠️ Chưa tải thư viện tải ngầm. F5 tay nhé!")
+                
         nut_dang_xuat()
         render_ban_quyen()
 
@@ -336,7 +299,7 @@ elif st.session_state['current_view'] == "teacher_view":
                     tn_rut_gon = tn_cuoi[:55] + "..." if len(tn_cuoi) > 55 else tn_cuoi
                     label_thu_gon = f"[{hinh_thuc_hien_tai.split(' ')[0]}] {ma_ca} | Lớp {ca['lop']} | Rủi ro: {ca['muc_do_rui_ro']} | 📝 {tn_rut_gon}"
                     
-                    with st.expander(label_thu_gon):
+                    with st.expander(label_thu_gon, expanded=True):
                         if "Trực tiếp" in hinh_thuc_hien_tai:
                             st.error(f"⏰ **Học sinh yêu cầu hẹn gặp mặt lúc:** {ca.get('lich_hen', 'Chưa xác định')}")
                         
@@ -404,50 +367,49 @@ elif st.session_state['current_view'] == "teacher_view":
                                 st.write(tn['noi_dung'])
 
         elif menu_gv == "👤 Hồ sơ cá nhân & Cài đặt":
-            st.subheader("👤 Cập nhật Hồ sơ Giáo viên & Ảnh Đại Diện")
-            
+            st.subheader("👤 Cập nhật Hồ sơ & Ảnh Đại Diện")
             c_img, c_info = st.columns([1, 2])
             with c_img:
-                st.write("**Ảnh đại diện (Sẽ hiển thị cho học sinh):**")
-                if user_info.get('avatar'): st.markdown(f'<img src="data:image/png;base64,{user_info["avatar"]}" width="150" style="border-radius: 10px; border: 2px solid #ddd;">', unsafe_allow_html=True)
+                if user_info.get('avatar'): st.markdown(f'<img src="data:image/png;base64,{user_info["avatar"]}" width="150" style="border-radius: 10px;">', unsafe_allow_html=True)
                 file_anh = st.file_uploader("Tải ảnh mới (JPG, PNG)", type=['png', 'jpg', 'jpeg'])
-                
             with c_info:
                 new_name = st.text_input("Họ và tên hiển thị:", value=user_info.get('name', ''))
                 new_phone = st.text_input("Số điện thoại (Zalo):", value=user_info.get('phone', ''))
                 new_email = st.text_input("Địa chỉ Email:", value=user_info.get('email', ''))
                 new_pw = st.text_input("Mật khẩu mới (Bỏ trống nếu không đổi):", type="password")
             
-            if st.button("💾 Lưu tất cả thay đổi", type="primary"):
+            if st.button("💾 Lưu thay đổi", type="primary"):
                 st.session_state['users'][user_id]['name'] = new_name
                 st.session_state['users'][user_id]['phone'] = new_phone
                 st.session_state['users'][user_id]['email'] = new_email
                 if new_pw: st.session_state['users'][user_id]['pass'] = new_pw
                 if file_anh is not None:
-                    # Chuyển ảnh thành mã Base64 để lưu vĩnh viễn
-                    base64_img = base64.b64encode(file_anh.read()).decode('utf-8')
-                    st.session_state['users'][user_id]['avatar'] = base64_img
+                    st.session_state['users'][user_id]['avatar'] = base64.b64encode(file_anh.read()).decode('utf-8')
                 luu_du_lieu_len_may()
-                st.success("✅ Đã cập nhật hồ sơ và Ảnh đại diện thành công!")
+                st.success("✅ Đã cập nhật thành công!")
                 st.rerun()
 
 # ==========================================
-# 4. KHÔNG GIAN BẢN QUẢN LÝ (ADMIN)
+# 4. KHÔNG GIAN BẢN QUẢN LÝ (ADMIN & NHÀ PHÁT TRIỂN)
 # ==========================================
 elif st.session_state['current_view'] == "admin_view":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
-        st.sidebar.markdown("⚙️ **Đang đăng nhập:** Ban Giám Hiệu")
+        user_hien_tai = st.session_state['current_user']
+        st.sidebar.markdown(f"⚙️ **Đang đăng nhập:** {st.session_state['users'][user_hien_tai]['name']}")
         st.sidebar.markdown("---")
-        menu_admin = st.sidebar.radio("🧭 DANH MỤC QUẢN TRỊ", [
-            "📊 Thống kê Tổng quan", 
-            "👥 Quản lý Nhân sự (Giáo viên)",
-            "📥 Xuất Báo cáo Excel",
-            "🔐 Cài đặt Mật khẩu Admin"
-        ])
-        st.sidebar.markdown("---")
-        if st.sidebar.button("🔄 Cập nhật dữ liệu", use_container_width=True):
-            tai_du_lieu_tu_may()
-            st.rerun()
+        
+        # TẠO MENU CHUYÊN BIỆT
+        danh_muc_admin = ["📊 Thống kê Tổng quan", "👥 Quản lý Nhân sự", "📥 Xuất Báo cáo Excel", "🔐 Đổi Mật khẩu"]
+        
+        # 🔑 NẾU LÀ TÀI KHOẢN TÁC GIẢ -> THÊM MENU BẢN QUYỀN
+        if user_hien_tai == "hoanganh_dev":
+            danh_muc_admin.append("🛠️ Quản lý Bản Quyền (Tác giả)")
+            
+        menu_admin = st.sidebar.radio("🧭 DANH MỤC QUẢN TRỊ", danh_muc_admin)
+        
+        if HAS_AUTOREFRESH:
+            auto_refresh_admin = st.sidebar.checkbox("🔄 Tự động làm mới", value=True)
+            if auto_refresh_admin: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
             
         nut_dang_xuat()
         render_ban_quyen()
@@ -468,14 +430,10 @@ elif st.session_state['current_view'] == "admin_view":
             
             if tong_ca > 0:
                 st.markdown("---")
-                st.markdown("**Biểu đồ Phân bổ Mức độ Rủi ro Tâm lý:**")
-                chart_data = pd.DataFrame({
-                    "Mức độ": ["Cao (Khẩn cấp)", "Trung bình", "Thấp", "Chưa phân tích"],
-                    "Số lượng": [ca_khan_cap, ca_tb, ca_thap, ca_cho]
-                })
+                chart_data = pd.DataFrame({"Mức độ": ["Cao (Khẩn cấp)", "Trung bình", "Thấp", "Chưa phân tích"], "Số lượng": [ca_khan_cap, ca_tb, ca_thap, ca_cho]})
                 st.bar_chart(chart_data.set_index("Mức độ"), color="#3B82F6")
 
-        elif menu_admin == "👥 Quản lý Nhân sự (Giáo viên)":
+        elif menu_admin == "👥 Quản lý Nhân sự":
             st.write("👉 **Sửa hồ sơ / Đổi mật khẩu Giáo viên**")
             if danh_sach_tai_khoan_gv:
                 gv_can_sua = st.selectbox("Chọn tài khoản để chỉnh sửa:", options=danh_sach_tai_khoan_gv, format_func=lambda x: f"{x} ({st.session_state['users'][x].get('name','')})")
@@ -509,14 +467,12 @@ elif st.session_state['current_view'] == "admin_view":
 
         elif menu_admin == "📥 Xuất Báo cáo Excel":
             if tong_ca > 0:
-                st.info("Mẫu báo cáo chuẩn hóa để in nộp phòng Giáo vụ.")
                 du_lieu_xuat = []
                 for ma_ca, ca in st.session_state['database'].items():
                     lich_su_chat = " | ".join([f"{t['nguoi_gui']}: {t['noi_dung']}" for t in ca['tin_nhan']])
                     du_lieu_xuat.append({
                         "Mã Hồ Sơ": ma_ca, "Thời gian": ca['thoi_gian'], "Lớp": ca['lop'],
-                        "Cảm xúc": ca.get('cam_xuc_ban_dau', 'N/A'),
-                        "Hình thức": ca.get('hinh_thuc', 'Gián tiếp'),
+                        "Cảm xúc": ca.get('cam_xuc_ban_dau', 'N/A'), "Hình thức": ca.get('hinh_thuc', 'Gián tiếp'),
                         "GV Phụ trách": st.session_state['users'][ca['gv_phu_trach']].get('name',''),
                         "Rủi ro (AI)": ca['muc_do_rui_ro'], "Kết quả xử lý": ca['trang_thai'],
                         "Nhật ký Chat": lich_su_chat
@@ -524,13 +480,44 @@ elif st.session_state['current_view'] == "admin_view":
                 df_export = pd.DataFrame(du_lieu_xuat)
                 csv = df_export.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📥 Tải File CSV Báo cáo", data=csv, file_name="Bao_Cao_Tam_Ly.csv", mime="text/csv", type="primary")
-            else: st.warning("Chưa có dữ liệu để xuất!")
+            
+            st.markdown("---")
+            st.error("🗑️ Dọn dẹp Hệ thống (Xóa hồ sơ cũ)")
+            danh_sach_ca = list(st.session_state['database'].keys())
+            if danh_sach_ca:
+                ca_can_xoa = st.selectbox("Chọn ca cần xóa:", options=danh_sach_ca, format_func=lambda x: f"{x} - Lớp: {st.session_state['database'][x]['lop']}")
+                if st.button("🚨 Xóa vĩnh viễn"):
+                    del st.session_state['database'][ca_can_xoa]
+                    luu_du_lieu_len_may()
+                    st.success("Đã xóa!")
+                    st.rerun()
 
         elif menu_admin == "🔐 Cài đặt Mật khẩu Admin":
-            st.subheader("🔐 Thay đổi mật khẩu quản trị")
             admin_new_pass = st.text_input("Nhập mật khẩu Admin mới:", type="password")
             if st.button("🔑 Cập nhật mật khẩu", type="primary"):
                 if admin_new_pass:
-                    st.session_state['users'][st.session_state['current_user']]['pass'] = admin_new_pass
+                    st.session_state['users'][user_hien_tai]['pass'] = admin_new_pass
                     luu_du_lieu_len_may()
                     st.success("Đổi mật khẩu thành công!")
+
+        # TÍNH NĂNG ĐỘC QUYỀN: GIA HẠN BẢN QUYỀN
+        elif menu_admin == "🛠️ Quản lý Bản Quyền (Tác giả)":
+            st.error("🔒 KHU VỰC BẢO MẬT: CHỈ DÀNH CHO NHÀ PHÁT TRIỂN")
+            exp_date_str = st.session_state['config'].get('expiry_date', 'Chưa có')
+            st.metric("Hạn sử dụng của Trường hiện tại:", exp_date_str)
+            
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            if col1.button("🟢 Gia hạn hệ thống thêm 1 Năm", type="primary"):
+                new_date = datetime.datetime.now() + datetime.timedelta(days=365)
+                st.session_state['config']['expiry_date'] = new_date.strftime('%d/%m/%Y')
+                luu_du_lieu_len_may()
+                st.success(f"Đã gia hạn thành công đến: {new_date.strftime('%d/%m/%Y')}")
+                st.rerun()
+                
+            if col2.button("🔴 Khóa hệ thống (Thu hồi bản quyền)"):
+                new_date = datetime.datetime.now() - datetime.timedelta(days=1)
+                st.session_state['config']['expiry_date'] = new_date.strftime('%d/%m/%Y')
+                luu_du_lieu_len_may()
+                st.error("Đã khóa hệ thống!")
+                st.rerun()

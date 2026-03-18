@@ -6,7 +6,7 @@ import requests
 import base64
 
 # ==========================================
-# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ & CHỐNG GHI ĐÈ DỮ LIỆU
+# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ (CHỐNG SẬP TRÊN CLOUD)
 # ==========================================
 def khoi_tao_he_thong():
     if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
@@ -16,7 +16,6 @@ def khoi_tao_he_thong():
     if 'inbox_expanded' not in st.session_state: st.session_state['inbox_expanded'] = True 
     if 'giao_dien_mobile' not in st.session_state: st.session_state['giao_dien_mobile'] = "💻 Máy tính (3 Cột)"
     if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "Xanh Mặc Định"
-    if 'just_updated' not in st.session_state: st.session_state['just_updated'] = False # Cờ chống trôi chữ AI
     
     if 'users' not in st.session_state:
         st.session_state['users'] = {
@@ -35,7 +34,7 @@ theme_map = {"Xanh Mặc Định": "#0068ff", "Tím Tinh Tế": "#6366f1", "Xanh
 main_color = theme_map.get(st.session_state.get('theme_color', 'Xanh Mặc Định'), "#0068ff")
 
 # ==========================================
-# 2. CẤU HÌNH GIAO DIỆN & CSS (TRONG SUỐT 100%)
+# CẤU HÌNH GIAO DIỆN & CSS
 # ==========================================
 st.set_page_config(page_title="Trạm Lắng Nghe AI", page_icon="🏫", layout="wide", initial_sidebar_state="collapsed")
 
@@ -47,19 +46,15 @@ st.markdown(f"""
     section[data-testid="stSidebar"] {{ display: none !important; }}
     
     .top-title {{ text-align: center; color: {main_color}; font-size: 24px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid {main_color}; padding-bottom: 5px; margin-bottom: 10px; }}
+    .pc-menu {{ background-color: {main_color}; border-radius: 12px; padding: 10px 0; text-align: center; height: 90vh; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }}
+    .pc-menu button {{ background-color: transparent !important; color: white !important; border: none !important; padding: 15px 0 !important; width: 100% !important; font-size: 16px !important; }}
+    .pc-menu button:hover {{ background-color: rgba(255,255,255,0.2) !important; }}
     
-    /* MENU BÊN TRÁI TRONG SUỐT (XÓA BỎ BẢNG MÀU XANH) */
-    [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {{ 
-        background-color: transparent !important; color: #4B5563 !important; border: none !important; 
-        padding: 15px 5px !important; width: 100% !important; font-size: 16px !important; font-weight: 600 !important; text-align: left !important;
-    }}
-    [data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {{ background-color: #F3F4F6 !important; border-radius: 8px !important; color: {main_color} !important; }}
-    
-    /* Ép sát hộp thư cột 2 */
+    /* Ép sát hộp thư */
     [data-testid="column"]:nth-of-type(2) div[data-testid="stVerticalBlock"] > div {{ padding: 0 !important; gap: 0 !important; margin-bottom: -15px !important; }}
     .chat-list-btn button {{ width: 100% !important; background-color: white !important; border: 1px solid #eaedf0 !important; border-radius: 5px !important; padding: 10px !important; text-align: left !important; justify-content: flex-start !important; color: #111 !important; margin-bottom: 5px !important; }}
     .chat-list-btn button:hover {{ background-color: #f3f5f6 !important; border-color: {main_color} !important; }}
-    .tiny-btn button {{ padding: 0px !important; border: none !important; background: transparent !important; color: #9CA3AF !important; font-size: 14px !important; text-align: center !important; }}
+    .tiny-btn button {{ padding: 0px !important; border: none !important; background: transparent !important; color: #9CA3AF !important; font-size: 14px !important; }}
     .tiny-btn button:hover {{ color: {main_color} !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -77,34 +72,28 @@ except: pass
 
 FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
 
-# ==========================================
-# 3. HÀM ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY (CHỐNG TRÔI CHỮ AI)
-# ==========================================
 def tai_du_lieu_tu_may():
     try:
-        r = requests.get(f"{FIREBASE_URL}/he_thong.json", timeout=5)
+        r = requests.get(f"{FIREBASE_URL}/he_thong.json")
         if r.status_code == 200 and r.json(): return r.json()
     except: pass
     return None
 
 def luu_du_lieu_len_may():
-    st.session_state['just_updated'] = True # Khóa đồng bộ ngược: Chống Firebase ghi đè chữ AI
     du_lieu_dong_bo = {'users': st.session_state['users'], 'database': st.session_state['database'], 'config': st.session_state['config'], 'licenses': st.session_state.get('licenses', {})}
-    try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo, timeout=5)
+    try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo)
     except: pass
 
-# Chỉ tải dữ liệu từ mây nếu không phải là vừa mới sửa cục bộ (Chống mất chữ)
-if not st.session_state.get('just_updated'):
-    du_lieu_dam_may = tai_du_lieu_tu_may()
-    if du_lieu_dam_may:
-        st.session_state['database'] = du_lieu_dam_may.get('database', {})
-        st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
-        st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
-        for k, v in du_lieu_dam_may.get('users', {}).items():
-            if k in st.session_state['users']: st.session_state['users'][k].update(v)
-            else: st.session_state['users'][k] = v
+du_lieu_dam_may = tai_du_lieu_tu_may()
+if du_lieu_dam_may:
+    st.session_state['database'] = du_lieu_dam_may.get('database', {})
+    st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
+    st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
+    for k, v in du_lieu_dam_may.get('users', {}).items():
+        if k in st.session_state['users']: st.session_state['users'][k].update(v)
+        else: st.session_state['users'][k] = v
 else:
-    st.session_state['just_updated'] = False # Reset cờ
+    luu_du_lieu_len_may()
 
 danh_sach_gv = {k: v.get('name', 'GV') for k, v in st.session_state['users'].items() if v.get('role') == 'teacher'}
 
@@ -119,7 +108,7 @@ def kiem_tra_ban_quyen_mem():
     return True
 
 # ==========================================
-# 4. CÁC HÀM XỬ LÝ GIAO DIỆN (CHUYỂN LÊN ĐỂ KHÔNG BỊ LỖI CÚ PHÁP)
+# CÁC HÀM GIAO DIỆN CHUNG
 # ==========================================
 def kiem_tra_dang_nhap(role_can_thiet=None):
     if 'token_login' in st.query_params:
@@ -199,10 +188,9 @@ def render_khung_chat(ma_ca, ca_hien_tai, phan_mem_hoat_dong):
                 st.write(tn.get('noi_dung'))
                 
     if phan_mem_hoat_dong and ca_hien_tai.get('trang_thai') != "Đã đóng ca":
-        # LUÔN HIỂN THỊ KẾT QUẢ NẾU CÓ
         if ca_hien_tai.get('ai_phan_tich'):
             st.success(f"✨ **AI CỐ VẤN:**\n\n{ca_hien_tai['ai_phan_tich']}")
-            if st.button("🗑️ Đã đọc xong, Xóa kết quả phân tích"):
+            if st.button("🗑️ Đã xem xong, Xóa kết quả phân tích này"):
                 ca_hien_tai['ai_phan_tich'] = None
                 luu_du_lieu_len_may(); st.rerun()
                 
@@ -239,8 +227,8 @@ def render_khung_chat(ma_ca, ca_hien_tai, phan_mem_hoat_dong):
                         random.shuffle(keys_luot_nay)
                         
                         for key_hien_tai in keys_luot_nay:
-                            # ĐỔI XUỐNG BẢN gemini-1.5-flash ĐỂ ĐẢM BẢO 100% HOẠT ĐỘNG, KHÔNG BỊ LỖI 404
-                            res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key_hien_tai}", json=payload, headers=headers)
+                            # ĐÃ SỬA LẠI ĐÚNG MODEL gemini-2.5-flash TRONG TÀI KHOẢN CỦA THẦY
+                            res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key_hien_tai}", json=payload, headers=headers)
                             if res.status_code == 200:
                                 data = res.json()
                                 if 'candidates' in data and len(data['candidates']) > 0:
@@ -248,15 +236,15 @@ def render_khung_chat(ma_ca, ca_hien_tai, phan_mem_hoat_dong):
                                     thanh_cong = True
                                     break
                                 else:
-                                    loi_chi_tiet = "Tin nhắn có từ khóa nhạy cảm bị Google chặn."
+                                    loi_chi_tiet = "Tin nhắn bị Google chặn do nghi ngờ vi phạm an toàn."
                             else:
-                                loi_chi_tiet = f"Lỗi API: {res.status_code}"
+                                loi_chi_tiet = f"Lỗi {res.status_code}"
                                 
                         if not thanh_cong: 
-                            ca_hien_tai['ai_phan_tich'] = f"🚨 **AI KHÔNG THỂ PHÂN TÍCH:**\n\nNguyên nhân: {loi_chi_tiet}\n*(Lưu ý: Nếu test quá 20 lần/ngày, hãy mượn Gmail khác tạo thêm API Key dán vào nhé!)*"
+                            ca_hien_tai['ai_phan_tich'] = f"🚨 **AI KHÔNG THỂ PHÂN TÍCH:**\n\nNguyên nhân: Lỗi API ({loi_chi_tiet})\n\n*(Lưu ý: Nếu test quá 20 lần/ngày, hãy tạo thêm API Key từ Gmail khác và dán nối tiếp vào phần Secrets!)*"
                         luu_du_lieu_len_may(); st.rerun()
                     except Exception as e:
-                        ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI MẠNG/KẾT NỐI:** {e}"
+                        ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI MẠNG:** {e}"
                         luu_du_lieu_len_may(); st.rerun()
                 
         gv_tra_loi = st.chat_input("Nhập tin nhắn gửi học sinh...")
@@ -378,7 +366,7 @@ elif st.session_state.get('current_view') == "teacher_view":
         ca_dang_mo = {k: v for k, v in ca_cua_toi.items() if v.get('trang_thai') != "Đã đóng ca"}
         ca_da_dong = {k: v for k, v in ca_cua_toi.items() if v.get('trang_thai') == "Đã đóng ca"}
 
-        st.session_state['giao_dien_mobile'] = st.radio("📱 Chế độ:", ["💻 Máy tính (3 Cột)", "📱 Điện thoại (1 Cột)"], horizontal=True, index=0 if "Máy" in st.session_state.get('giao_dien_mobile', 'Máy tính') else 1)
+        st.session_state['giao_dien_mobile'] = st.radio("📱 Chế độ hiển thị:", ["💻 Máy tính (3 Cột)", "📱 Điện thoại (App)"], horizontal=True, index=0 if "Máy" in st.session_state.get('giao_dien_mobile', 'Máy tính') else 1)
         st.markdown("<div class='top-title'>TRẠM TƯ VẤN</div>", unsafe_allow_html=True)
 
         if "Máy tính" in st.session_state['giao_dien_mobile']:
@@ -389,35 +377,35 @@ elif st.session_state.get('current_view') == "teacher_view":
             col_menu, col_danh_sach, col_chat = st.columns([w_menu, w_inbox, w_chat], gap="small")
             
             with col_menu:
+                st.markdown('<div class="pc-menu">', unsafe_allow_html=True)
                 st.markdown('<div class="tiny-btn">', unsafe_allow_html=True)
                 if st.session_state.get('menu_expanded'):
                     c_btn_m1, c_btn_m2 = st.columns([4, 1])
                     if c_btn_m2.button("◀", key="hide_menu"): st.session_state['menu_expanded'] = False; st.rerun()
-                    if user_info.get('avatar'): st.markdown(f'<div style="text-align:center; margin-bottom: 10px;"><img src="data:image/png;base64,{user_info.get("avatar")}" width="50" style="border-radius: 50%;"></div>', unsafe_allow_html=True)
+                    if user_info.get('avatar'): st.markdown(f'<div style="text-align:center; margin-bottom: 10px;"><img src="data:image/png;base64,{user_info.get("avatar")}" width="45" style="border-radius: 50%;"></div>', unsafe_allow_html=True)
                     else: st.markdown(f'<div style="text-align:center; font-size:25px; margin-bottom: 10px;">👨‍🏫</div>', unsafe_allow_html=True)
-                    st.markdown(f"<div style='text-align:center; font-size:14px; font-weight:bold; color:{main_color}; margin-bottom:10px;'>{user_info.get('name', 'Giáo viên')}</div>", unsafe_allow_html=True)
                     
-                    if st.button("💬 Ca đang mở", key="m_mo", use_container_width=True): st.session_state['menu_gv'] = "mo"
-                    if st.button("📦 Ca đã đóng", key="m_xong", use_container_width=True): st.session_state['menu_gv'] = "xong"
-                    if st.button("👤 Hồ sơ", key="m_hs", use_container_width=True): st.session_state['menu_gv'] = "ho_so"
+                    if st.button("💬 Đang mở", key="m_mo"): st.session_state['menu_gv'] = "mo"
+                    if st.button("📦 Đã đóng", key="m_xong"): st.session_state['menu_gv'] = "xong"
+                    if st.button("👤 Hồ sơ", key="m_hs"): st.session_state['menu_gv'] = "ho_so"
                     
-                    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-                    if st.button("🚪 Đăng xuất", key="m_out", use_container_width=True):
+                    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+                    if st.button("🚪 Thoát", key="m_out"):
                         st.session_state['current_user'] = None
                         st.session_state['current_view'] = "landing_page"
                         st.query_params.clear()
                         st.rerun()
                 else:
-                    if st.button("▶", key="show_menu", use_container_width=True): st.session_state['menu_expanded'] = True; st.rerun()
-                    if st.button("💬", key="m_mo2", use_container_width=True): st.session_state['menu_gv'] = "mo"
-                    if st.button("📦", key="m_xong2", use_container_width=True): st.session_state['menu_gv'] = "xong"
-                    if st.button("👤", key="m_hs2", use_container_width=True): st.session_state['menu_gv'] = "ho_so"
-                    if st.button("🚪", key="m_out2", use_container_width=True):
+                    if st.button("▶", key="show_menu"): st.session_state['menu_expanded'] = True; st.rerun()
+                    if st.button("💬", key="m_mo2"): st.session_state['menu_gv'] = "mo"
+                    if st.button("📦", key="m_xong2"): st.session_state['menu_gv'] = "xong"
+                    if st.button("👤", key="m_hs2"): st.session_state['menu_gv'] = "ho_so"
+                    if st.button("🚪", key="m_out2"):
                         st.session_state['current_user'] = None
                         st.session_state['current_view'] = "landing_page"
                         st.query_params.clear()
                         st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div></div>', unsafe_allow_html=True)
 
             with col_danh_sach:
                 if st.session_state.get('inbox_expanded', True):
@@ -427,11 +415,11 @@ elif st.session_state.get('current_view') == "teacher_view":
                     st.markdown('</div>', unsafe_allow_html=True)
                     
                     if st.session_state.get('menu_gv') == "mo":
-                        c_title.markdown(f"<b style='color:#374151; font-size:16px;'>📥 Hộp thư làm việc</b>", unsafe_allow_html=True)
+                        c_title.markdown(f"<b style='color:{main_color}; font-size:16px;'>📥 Hộp thư làm việc</b>", unsafe_allow_html=True)
                         if not phan_mem_hoat_dong: st.error("⛔ Hết hạn!")
                         render_danh_sach_ca(ca_dang_mo, is_done=False)
                     elif st.session_state.get('menu_gv') == "xong":
-                        c_title.markdown(f"<b style='color:#374151; font-size:16px;'>📦 Đã hoàn thành</b>", unsafe_allow_html=True)
+                        c_title.markdown(f"<b style='color:{main_color}; font-size:16px;'>📦 Đã hoàn thành</b>", unsafe_allow_html=True)
                         render_danh_sach_ca(ca_da_dong, is_done=True)
                     else: st.info("👉 Vui lòng điền thông tin bên phải.")
                 else:
@@ -450,7 +438,6 @@ elif st.session_state.get('current_view') == "teacher_view":
                 elif st.session_state.get('menu_gv') == "ho_so":
                     render_ho_so(user_info, user_id)
         else:
-            # GIAO DIỆN MOBILE APP (MENU NẰM NGANG Ở TRÊN CÙNG NHƯ THẦY YÊU CẦU)
             m1, m2, m3, m4 = st.columns(4)
             if m1.button("💬 Mở", use_container_width=True): st.session_state['menu_gv'] = "mo"; st.session_state['active_chat'] = None; st.rerun()
             if m2.button("📦 Đóng", use_container_width=True): st.session_state['menu_gv'] = "xong"; st.session_state['active_chat'] = None; st.rerun()
@@ -461,24 +448,22 @@ elif st.session_state.get('current_view') == "teacher_view":
                 st.rerun()
                 
             st.markdown("<hr style='margin-top:0px; margin-bottom:10px;'>", unsafe_allow_html=True)
-            if not phan_mem_hoat_dong: st.error("⛔ Phần mềm hết hạn Bản quyền. Vui lòng báo BGH.")
+            if not phan_mem_hoat_dong: st.error("⛔ Phần mềm hết hạn Bản quyền.")
 
             if st.session_state.get('menu_gv') == "mo":
                 if st.session_state.get('active_chat'):
                     if st.button("🔙 Trở lại Danh sách Ca", type="primary", use_container_width=True): st.session_state['active_chat'] = None; st.rerun()
                     render_khung_chat(st.session_state['active_chat'], ca_cua_toi[st.session_state['active_chat']], phan_mem_hoat_dong)
                 else:
-                    st.markdown(f"<b style='color:#374151; font-size:16px;'>📥 Hộp thư làm việc</b>", unsafe_allow_html=True)
+                    st.markdown(f"<b style='color:{main_color}; font-size:16px;'>📥 Hộp thư làm việc</b>", unsafe_allow_html=True)
                     render_danh_sach_ca(ca_dang_mo, is_done=False)
-            
             elif st.session_state.get('menu_gv') == "xong":
                 if st.session_state.get('active_chat'):
                     if st.button("🔙 Trở lại Danh sách", type="primary", use_container_width=True): st.session_state['active_chat'] = None; st.rerun()
                     render_khung_chat(st.session_state['active_chat'], ca_cua_toi[st.session_state['active_chat']], phan_mem_hoat_dong)
                 else:
-                    st.markdown(f"<b style='color:#374151; font-size:16px;'>📦 Đã hoàn thành</b>", unsafe_allow_html=True)
+                    st.markdown(f"<b style='color:{main_color}; font-size:16px;'>📦 Đã hoàn thành</b>", unsafe_allow_html=True)
                     render_danh_sach_ca(ca_da_dong, is_done=True)
-                    
             elif st.session_state.get('menu_gv') == "ho_so":
                 render_ho_so(user_info, user_id)
 

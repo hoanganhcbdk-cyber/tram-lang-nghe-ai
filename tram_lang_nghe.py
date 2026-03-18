@@ -36,7 +36,7 @@ def khoi_tao_he_thong():
     if 'database' not in st.session_state: st.session_state['database'] = {}
     if 'config' not in st.session_state: st.session_state['config'] = {'active_key': 'FREE-1YEAR', 'school_code': '123456'} 
     if 'licenses' not in st.session_state: 
-        st.session_state['licenses'] = {'FREE-1YEAR': {'school_name': 'Miễn phí 1 Năm Đầu', 'expiry_date': (get_vn_time() + datetime.timedelta(days=365)).strftime('%d/%m/%Y'), 'active': True}}
+        st.session_state['licenses'] = {'FREE-1YEAR': {'school_name': 'Miễn phí', 'expiry_date': '31/12/2099', 'active': True}}
 
 khoi_tao_he_thong()
 
@@ -148,15 +148,9 @@ else:
 
 danh_sach_gv = {k: v.get('name', 'GV') for k, v in st.session_state['users'].items() if v.get('role') == 'teacher'}
 
+# TẮT VĨNH VIỄN LỖI HẾT HẠN (MỞ KHÓA UNLIMITED)
 def kiem_tra_ban_quyen_mem():
-    active_key = st.session_state['config'].get('active_key', '')
-    licenses = st.session_state.get('licenses', {})
-    if st.session_state.get('current_user') == 'hoanganh_dev': return True 
-    if active_key not in licenses or not licenses[active_key].get('active', False): return False
-    try:
-        if get_vn_time() > datetime.datetime.strptime(licenses[active_key]['expiry_date'], '%d/%m/%Y'): return False
-    except: return False
-    return True
+    return True 
 
 # ==========================================
 # 4. GIAO DIỆN ĐĂNG NHẬP
@@ -238,8 +232,7 @@ elif st.session_state.get('current_view') == "student_view":
         st.markdown("<div style='background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
         tab_gui, tab_xem = st.tabs(["📝 Gửi Tâm Sự", "💬 Phòng Chat Bảo Mật"])
         with tab_gui:
-            
-            # HIỂN THỊ THÔNG BÁO VÀ BÓNG BAY TỪ LẦN GỬI TRƯỚC
+            # HIỂN THỊ BÓNG BAY VÀ THÔNG BÁO TỪ LẦN TRƯỚC
             if st.session_state.get('show_success'):
                 st.success(f"✅ Gửi thành công! Để xem lại thầy cô trả lời, em hãy lưu lại mã này nhé: **{st.session_state['show_success']}**")
                 st.balloons()
@@ -247,7 +240,7 @@ elif st.session_state.get('current_view') == "student_view":
                 
             ma_bao_mat_he_thong = st.session_state['config'].get('school_code', '123456')
             
-            # SỬ DỤNG KEY ĐỘNG ĐỂ LÀM SẠCH FORM HỌC SINH
+            # SỬ DỤNG KEY ĐỘNG ĐỂ LÀM SẠCH FORM
             k = st.session_state.get('form_key', 0)
             
             ma_xac_thuc = st.text_input("🔑 Mã bảo mật của trường:", type="password", key=f"ma_{k}")
@@ -427,7 +420,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                                 if not danh_sach_keys:
                                     st.error("🚨 **CHƯA CÓ API KEY:** Hệ thống chưa nhận được Key của Google. Thầy hãy kiểm tra lại mục Secrets.")
                                 else:
-                                    with st.spinner("AI đang đọc tin nhắn và phân tích..."):
+                                    with st.spinner("AI đang đọc và phân tích tâm lý học sinh..."):
                                         tin_nhan_moi_lien_tiep = []
                                         for t in reversed(ca_hien_tai['tin_nhan']):
                                             if t.get('nguoi_gui') == "Học sinh": tin_nhan_moi_lien_tiep.insert(0, xoa_rac_html(t.get('noi_dung', '')))
@@ -455,7 +448,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         random.shuffle(keys_luot_nay)
                                         
                                         # ==============================================================
-                                        # PHỤC HỒI NGUYÊN TRẠNG 100% ĐOẠN AI GOOGLE GEMINI THEO FILE GỐC
+                                        # PHỤC HỒI NGUYÊN TRẠNG 100% ĐOẠN AI GOOGLE GEMINI TỪ FILE GỐC CỦA THẦY
                                         # ==============================================================
                                         for key_sach in keys_luot_nay:
                                             if not key_sach.startswith("AIza"):
@@ -465,24 +458,23 @@ elif st.session_state.get('current_view') == "teacher_view":
                                             headers = {'Content-Type': 'application/json'}
                                             payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                             
-                                            models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
-                                            for model in models_to_try:
-                                                if thanh_cong: break
-                                                try:
-                                                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
-                                                    res = requests.post(url, json=payload, headers=headers, timeout=15)
-                                                    if res.status_code == 200:
-                                                        data = res.json()
-                                                        if 'candidates' in data and len(data['candidates']) > 0:
-                                                            ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
-                                                            thanh_cong = True
-                                                            break
-                                                        else:
-                                                            loi_chi_tiet = "Google từ chối trả lời (vướng từ khóa)."
+                                            # GỌI CHÍNH XÁC gemini-2.5-flash
+                                            model = "gemini-2.5-flash"
+                                            try:
+                                                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
+                                                res = requests.post(url, json=payload, headers=headers, timeout=15)
+                                                if res.status_code == 200:
+                                                    data = res.json()
+                                                    if 'candidates' in data and len(data['candidates']) > 0:
+                                                        ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
+                                                        thanh_cong = True
+                                                        break
                                                     else:
-                                                        loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:150]}..."
-                                                except Exception as err:
-                                                    loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
+                                                        loi_chi_tiet = "Google từ chối trả lời (vướng từ khóa)."
+                                                else:
+                                                    loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:150]}..."
+                                            except Exception as err:
+                                                loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
                                             
                                             if thanh_cong: break
                                         # ==============================================================
@@ -518,7 +510,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                     luu_du_lieu_len_may(); st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-# 4. KHÔNG GIAN QUẢN TRỊ ADMIN
+# 4. KHÔNG GIAN QUẢN TRỊ ADMIN 
 elif st.session_state.get('current_view') == "admin_view":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
         user_hien_tai = st.session_state.get('current_user')
@@ -580,7 +572,7 @@ elif st.session_state.get('current_view') == "admin_view":
                             c_del1, c_del2 = st.columns([5, 1])
                             c_del1.caption(f"**Rủi ro AI:** {ca.get('muc_do_rui_ro','')}")
                             
-                            # NÚT XÓA CA TƯ VẤN (ADMIN)
+                            # NÚT XÓA CA TƯ VẤN (ADMIN CÓ THỂ XÓA BẤT KỲ CA NÀO)
                             if c_del2.button("🗑️ Xóa ca này", key=f"del_{ma_ca}", type="primary"):
                                 del st.session_state['database'][ma_ca]
                                 luu_du_lieu_len_may()

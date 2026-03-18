@@ -7,7 +7,7 @@ import base64
 import re
 
 # ==========================================
-# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ & KHÓA ĐỒNG BỘ
+# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ
 # ==========================================
 def khoi_tao_he_thong():
     if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
@@ -15,7 +15,7 @@ def khoi_tao_he_thong():
     if 'active_chat' not in st.session_state: st.session_state['active_chat'] = None 
     if 'menu_gv' not in st.session_state: st.session_state['menu_gv'] = "mo"
     if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "Xanh Mặc Định"
-    if 'just_updated' not in st.session_state: st.session_state['just_updated'] = False # KHÓA CHỐNG MẤT CHỮ AI
+    if 'just_updated' not in st.session_state: st.session_state['just_updated'] = False 
     
     if 'users' not in st.session_state:
         st.session_state['users'] = {
@@ -37,7 +37,7 @@ def xoa_rac_html(text):
     return re.sub(r'<.*?>', '', str(text))
 
 # ==========================================
-# 2. CẤU HÌNH GIAO DIỆN & CSS
+# 2. CẤU HÌNH GIAO DIỆN & CSS (TRONG SUỐT BÊN TRÁI)
 # ==========================================
 st.set_page_config(page_title="Trạm Lắng Nghe AI", page_icon="🏫", layout="wide", initial_sidebar_state="collapsed")
 
@@ -49,18 +49,19 @@ st.markdown(f"""
     
     .top-title {{ text-align: center; color: {main_color}; font-size: 24px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid {main_color}; padding-bottom: 5px; margin-bottom: 10px; }}
     
-    /* MENU TRONG SUỐT */
+    /* MENU BÊN TRÁI: Trong suốt tuyệt đối */
     div[data-testid="column"]:nth-of-type(1) {{ background: transparent !important; background-color: transparent !important; border-right: 1px solid #e5e7eb !important; padding-top: 10px !important; }}
     div[data-testid="column"]:nth-of-type(1) > div {{ background: transparent !important; background-color: transparent !important; }}
     div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {{ background-color: transparent !important; color: #4B5563 !important; border: none !important; padding: 10px 5px !important; width: 100% !important; font-size: 15px !important; font-weight: 600 !important; text-align: left !important; justify-content: flex-start !important; margin-bottom: 5px !important; box-shadow: none !important; }}
     div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {{ background-color: #F3F4F6 !important; border-radius: 8px !important; color: {main_color} !important; }}
     
-    /* HỘP THƯ */
+    /* HỘP THƯ LÀM VIỆC */
     div[data-testid="column"]:nth-of-type(2) div[data-testid="stVerticalBlock"] > div {{ padding: 0 !important; gap: 0 !important; margin-bottom: -15px !important; }}
     .chat-list-btn button {{ width: 100% !important; background-color: white !important; border: 1px solid #eaedf0 !important; border-radius: 8px !important; padding: 12px 10px !important; text-align: left !important; justify-content: flex-start !important; color: #111 !important; margin-bottom: 5px !important; }}
     .chat-list-btn button p {{ margin: 0 !important; line-height: 1.5 !important; font-size: 14px !important; white-space: pre-wrap !important; }}
     .chat-list-btn button:hover {{ background-color: #f3f5f6 !important; border-color: {main_color} !important; }}
     
+    /* ĐIỆN THOẠI */
     @media (max-width: 768px) {{
         [data-testid="column"]:nth-of-type(1) {{ border-right: none !important; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px; }}
         [data-testid="column"]:nth-of-type(1) div[data-testid="stVerticalBlock"] {{ flex-direction: row !important; flex-wrap: wrap !important; justify-content: space-around !important; gap: 5px !important; }}
@@ -81,7 +82,7 @@ try:
     HAS_AUTOREFRESH = True
 except ImportError: HAS_AUTOREFRESH = False
 
-# LỌC VÀ LẤY API KEY
+# LỌC VÀ LẤY API KEY CỦA GOOGLE TỪ SECRETS
 try:
     if "API_KEYS" in st.secrets: 
         danh_sach_keys = [k.strip().strip('"').strip("'") for k in st.secrets["API_KEYS"].split(",") if k.strip()]
@@ -93,7 +94,7 @@ except: danh_sach_keys = []
 FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
 
 # ==========================================
-# 3. ĐỒNG BỘ ĐÁM MÂY (ĐÃ SỬA LỖI MẤT CHỮ AI)
+# 3. ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY
 # ==========================================
 def tai_du_lieu_tu_may():
     try:
@@ -103,12 +104,11 @@ def tai_du_lieu_tu_may():
     return None
 
 def luu_du_lieu_len_may():
-    st.session_state['just_updated'] = True # BẬT KHÓA: Không cho tải dữ liệu đè lên
+    st.session_state['just_updated'] = True
     du_lieu_dong_bo = {'users': st.session_state['users'], 'database': st.session_state['database'], 'config': st.session_state['config'], 'licenses': st.session_state.get('licenses', {})}
     try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo, timeout=5)
     except: pass
 
-# CHỈ TẢI TỪ ĐÁM MÂY NẾU KHÔNG PHẢI VỪA MỚI LƯU
 if not st.session_state.get('just_updated'):
     du_lieu_dam_may = tai_du_lieu_tu_may()
     if du_lieu_dam_may:
@@ -119,7 +119,6 @@ if not st.session_state.get('just_updated'):
             if k in st.session_state['users']: st.session_state['users'][k].update(v)
             else: st.session_state['users'][k] = v
 else:
-    # Tắt khóa cho vòng lặp tiếp theo
     st.session_state['just_updated'] = False
 
 danh_sach_gv = {k: v.get('name', 'GV') for k, v in st.session_state['users'].items() if v.get('role') == 'teacher'}
@@ -232,7 +231,7 @@ elif st.session_state.get('current_view') == "student_view":
                 st.balloons()
 
     with tab_xem:
-        if HAS_AUTOREFRESH: st_autorefresh(interval=6000, limit=None, key="hs_refresh") 
+        if HAS_AUTOREFRESH: st_autorefresh(interval=30000, limit=None, key="hs_refresh") # THỜI GIAN ĐỢI CHUẨN 30S
         ma_tra_cuu = st.text_input("Nhập Mã tra cứu:")
         if st.button("Truy cập"): st.session_state['ca_dang_xem'] = ma_tra_cuu.strip()
             
@@ -261,7 +260,8 @@ elif st.session_state.get('current_view') == "teacher_view":
         user_info = st.session_state['users'].get(user_id, {})
         phan_mem_hoat_dong = kiem_tra_ban_quyen_mem()
         
-        if HAS_AUTOREFRESH: st_autorefresh(interval=6000, limit=None, key="gv_refresh") 
+        # ĐÃ SỬA THÀNH 30 GIÂY ĐỂ AI KHÔNG BỊ "CẮT CỔ" GIỮA CHỪNG
+        if HAS_AUTOREFRESH: st_autorefresh(interval=30000, limit=None, key="gv_refresh") 
         if 'menu_gv' not in st.session_state: st.session_state['menu_gv'] = "mo"
         
         ca_cua_toi = {k: v for k, v in st.session_state['database'].items() if v.get('gv_phu_trach') == user_id}
@@ -366,7 +366,8 @@ elif st.session_state.get('current_view') == "teacher_view":
                         if not ca_hien_tai.get('ai_phan_tich'):
                             if st.button("🧠 Phân tích tâm lý bằng Google Gemini", type="primary", use_container_width=True):
                                 if not danh_sach_keys:
-                                    st.error("🚨 **CHƯA CÓ API KEY:** Hệ thống chưa nhận được Key của Google. Thầy hãy kiểm tra lại mục Secrets và bấm Reboot App nhé!")
+                                    ca_hien_tai['ai_phan_tich'] = "🚨 **LỖI:** Chưa cấu hình API Key. Thầy/cô vui lòng vào mục Secrets để dán API Key của Google (AIza...) vào."
+                                    luu_du_lieu_len_may(); st.rerun()
                                 else:
                                     with st.spinner("AI đang đọc tin nhắn và phân tích..."):
                                         tin_nhan_moi_lien_tiep = []
@@ -435,11 +436,10 @@ elif st.session_state.get('current_view') == "teacher_view":
                                             if thanh_cong: break
                                                         
                                         if not thanh_cong: 
-                                            st.error(f"🚨 **GOOGLE AI BÁO LỖI:**\n\n`{loi_chi_tiet}`")
-                                            st.warning("💡 Gợi ý: Nếu thầy vừa thay mã Key mới, hãy bấm chọn **Manage app** (hoặc dấu 3 chấm) ở góc dưới/trên cùng bên phải màn hình -> Chọn **Reboot app** để hệ thống nhận Key mới nhé!")
-                                        else:
-                                            luu_du_lieu_len_may()
-                                            st.rerun()
+                                            ca_hien_tai['ai_phan_tich'] = f"🚨 **GOOGLE AI BÁO LỖI CHI TIẾT:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Nếu lỗi 429 = Đã hết 20 lần/ngày. Hãy mượn Gmail khác tạo Key Gemini mới dán vào Secrets!)*"
+                                        
+                                        luu_du_lieu_len_may()
+                                        st.rerun()
                                 
                         gv_tra_loi = st.chat_input("Nhập tin nhắn hỗ trợ học sinh...")
                         if gv_tra_loi:
@@ -490,7 +490,7 @@ elif st.session_state.get('current_view') == "admin_view":
                 st.rerun()
 
         with col_main_ad:
-            if HAS_AUTOREFRESH: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
+            if HAS_AUTOREFRESH: st_autorefresh(interval=30000, limit=None, key="admin_refresh")
             
             if not phan_mem_hoat_dong and user_hien_tai != "hoanganh_dev":
                 st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN CHÍNH THỨC.")

@@ -7,7 +7,7 @@ import base64
 import re
 
 # ==========================================
-# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ
+# 1. LÁ CHẮN BẢO VỆ BỘ NHỚ & KHÓA ĐỒNG BỘ
 # ==========================================
 def khoi_tao_he_thong():
     if 'current_view' not in st.session_state: st.session_state['current_view'] = "landing_page"
@@ -15,6 +15,7 @@ def khoi_tao_he_thong():
     if 'active_chat' not in st.session_state: st.session_state['active_chat'] = None 
     if 'menu_gv' not in st.session_state: st.session_state['menu_gv'] = "mo"
     if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "Xanh Mặc Định"
+    if 'just_updated' not in st.session_state: st.session_state['just_updated'] = False # KHÓA CHỐNG MẤT CHỮ AI
     
     if 'users' not in st.session_state:
         st.session_state['users'] = {
@@ -36,7 +37,7 @@ def xoa_rac_html(text):
     return re.sub(r'<.*?>', '', str(text))
 
 # ==========================================
-# 2. CẤU HÌNH GIAO DIỆN & CSS (TRONG SUỐT 100%)
+# 2. CẤU HÌNH GIAO DIỆN & CSS
 # ==========================================
 st.set_page_config(page_title="Trạm Lắng Nghe AI", page_icon="🏫", layout="wide", initial_sidebar_state="collapsed")
 
@@ -48,19 +49,18 @@ st.markdown(f"""
     
     .top-title {{ text-align: center; color: {main_color}; font-size: 24px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid {main_color}; padding-bottom: 5px; margin-bottom: 10px; }}
     
-    /* MENU BÊN TRÁI: Trong suốt tuyệt đối */
+    /* MENU TRONG SUỐT */
     div[data-testid="column"]:nth-of-type(1) {{ background: transparent !important; background-color: transparent !important; border-right: 1px solid #e5e7eb !important; padding-top: 10px !important; }}
     div[data-testid="column"]:nth-of-type(1) > div {{ background: transparent !important; background-color: transparent !important; }}
     div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {{ background-color: transparent !important; color: #4B5563 !important; border: none !important; padding: 10px 5px !important; width: 100% !important; font-size: 15px !important; font-weight: 600 !important; text-align: left !important; justify-content: flex-start !important; margin-bottom: 5px !important; box-shadow: none !important; }}
     div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button:hover {{ background-color: #F3F4F6 !important; border-radius: 8px !important; color: {main_color} !important; }}
     
-    /* HỘP THƯ LÀM VIỆC */
+    /* HỘP THƯ */
     div[data-testid="column"]:nth-of-type(2) div[data-testid="stVerticalBlock"] > div {{ padding: 0 !important; gap: 0 !important; margin-bottom: -15px !important; }}
     .chat-list-btn button {{ width: 100% !important; background-color: white !important; border: 1px solid #eaedf0 !important; border-radius: 8px !important; padding: 12px 10px !important; text-align: left !important; justify-content: flex-start !important; color: #111 !important; margin-bottom: 5px !important; }}
     .chat-list-btn button p {{ margin: 0 !important; line-height: 1.5 !important; font-size: 14px !important; white-space: pre-wrap !important; }}
     .chat-list-btn button:hover {{ background-color: #f3f5f6 !important; border-color: {main_color} !important; }}
     
-    /* THUẬT TOÁN AUTO-RESPONSIVE (ĐIỆN THOẠI) */
     @media (max-width: 768px) {{
         [data-testid="column"]:nth-of-type(1) {{ border-right: none !important; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px; }}
         [data-testid="column"]:nth-of-type(1) div[data-testid="stVerticalBlock"] {{ flex-direction: row !important; flex-wrap: wrap !important; justify-content: space-around !important; gap: 5px !important; }}
@@ -71,7 +71,6 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# THUẬT TOÁN ẨN/HIỆN CỘT TRÊN MOBILE
 if st.session_state.get('active_chat'):
     st.markdown("<style>@media (max-width: 768px) { [data-testid='column']:nth-of-type(2) { display: none !important; } }</style>", unsafe_allow_html=True)
 else:
@@ -82,7 +81,7 @@ try:
     HAS_AUTOREFRESH = True
 except ImportError: HAS_AUTOREFRESH = False
 
-# LẤY API KEY TỪ SECRETS (Lọc bỏ ngoặc kép thừa nếu có)
+# LỌC VÀ LẤY API KEY
 try:
     if "API_KEYS" in st.secrets: 
         danh_sach_keys = [k.strip().strip('"').strip("'") for k in st.secrets["API_KEYS"].split(",") if k.strip()]
@@ -94,7 +93,7 @@ except: danh_sach_keys = []
 FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
 
 # ==========================================
-# 3. ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY
+# 3. ĐỒNG BỘ ĐÁM MÂY (ĐÃ SỬA LỖI MẤT CHỮ AI)
 # ==========================================
 def tai_du_lieu_tu_may():
     try:
@@ -104,20 +103,24 @@ def tai_du_lieu_tu_may():
     return None
 
 def luu_du_lieu_len_may():
+    st.session_state['just_updated'] = True # BẬT KHÓA: Không cho tải dữ liệu đè lên
     du_lieu_dong_bo = {'users': st.session_state['users'], 'database': st.session_state['database'], 'config': st.session_state['config'], 'licenses': st.session_state.get('licenses', {})}
     try: requests.put(f"{FIREBASE_URL}/he_thong.json", json=du_lieu_dong_bo, timeout=5)
     except: pass
 
-du_lieu_dam_may = tai_du_lieu_tu_may()
-if du_lieu_dam_may:
-    st.session_state['database'] = du_lieu_dam_may.get('database', {})
-    st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
-    st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
-    for k, v in du_lieu_dam_may.get('users', {}).items():
-        if k in st.session_state['users']: st.session_state['users'][k].update(v)
-        else: st.session_state['users'][k] = v
+# CHỈ TẢI TỪ ĐÁM MÂY NẾU KHÔNG PHẢI VỪA MỚI LƯU
+if not st.session_state.get('just_updated'):
+    du_lieu_dam_may = tai_du_lieu_tu_may()
+    if du_lieu_dam_may:
+        st.session_state['database'] = du_lieu_dam_may.get('database', {})
+        st.session_state['config'] = du_lieu_dam_may.get('config', st.session_state.get('config'))
+        st.session_state['licenses'] = du_lieu_dam_may.get('licenses', st.session_state.get('licenses'))
+        for k, v in du_lieu_dam_may.get('users', {}).items():
+            if k in st.session_state['users']: st.session_state['users'][k].update(v)
+            else: st.session_state['users'][k] = v
 else:
-    luu_du_lieu_len_may()
+    # Tắt khóa cho vòng lặp tiếp theo
+    st.session_state['just_updated'] = False
 
 danh_sach_gv = {k: v.get('name', 'GV') for k, v in st.session_state['users'].items() if v.get('role') == 'teacher'}
 
@@ -322,7 +325,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                 st.info("👉 Hãy điền thông tin bên Cột phải.")
 
         with col_chat:
-            if not phan_mem_hoat_dong: st.error("⛔ Hết hạn Bản quyền. Tính năng AI và Chat bị khóa.")
+            if not phan_mem_hoat_dong: st.error("⛔ Hết hạn Bản quyền. Tính năng AI bị khóa.")
             
             if st.session_state.get('menu_gv') in ["mo", "xong"]:
                 ma_dang_chon = st.session_state.get('active_chat')
@@ -363,8 +366,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                         if not ca_hien_tai.get('ai_phan_tich'):
                             if st.button("🧠 Phân tích tâm lý bằng Google Gemini", type="primary", use_container_width=True):
                                 if not danh_sach_keys:
-                                    ca_hien_tai['ai_phan_tich'] = "🚨 **LỖI:** Chưa cấu hình API Key. Thầy/cô vui lòng vào mục Secrets để dán API Key của Google (AIza...) vào."
-                                    luu_du_lieu_len_may(); st.rerun()
+                                    st.error("🚨 **CHƯA CÓ API KEY:** Hệ thống chưa nhận được Key của Google. Thầy hãy kiểm tra lại mục Secrets và bấm Reboot App nhé!")
                                 else:
                                     with st.spinner("AI đang đọc tin nhắn và phân tích..."):
                                         tin_nhan_moi_lien_tiep = []
@@ -388,64 +390,56 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         [PHÂN TÍCH NHANH]: ...
                                         [GỢI Ý TRẢ LỜI]: ..."""
                                         
-                                        try:
-                                            thanh_cong = False
-                                            loi_chi_tiet = ""
-                                            keys_luot_nay = danh_sach_keys.copy()
-                                            random.shuffle(keys_luot_nay)
-                                            
-                                            # CẤU HÌNH VƯỢT BỘ LỌC AN TOÀN CỦA GOOGLE (DÀNH CHO TÂM LÝ Y KHOA)
-                                            safety_settings = [
-                                                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                                                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                                                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-                                            ]
-                                            
-                                            # ƯU TIÊN CHẠY GOOGLE GEMINI 100%
-                                            for key_sach in keys_luot_nay:
-                                                if not key_sach.startswith("AIza"):
-                                                    loi_chi_tiet = "Mã Key không hợp lệ. API Key của Google Gemini bắt buộc phải bắt đầu bằng chữ 'AIza'."
-                                                    continue
-
-                                                headers = {'Content-Type': 'application/json'}
-                                                payload = {
-                                                    "contents": [{"parts": [{"text": prompt}]}],
-                                                    "safetySettings": safety_settings
-                                                }
-                                                
-                                                # Thử 2 phiên bản để đảm bảo tỷ lệ thành công cao nhất
-                                                models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
-                                                for model in models_to_try:
-                                                    if thanh_cong: break
-                                                    try:
-                                                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
-                                                        res = requests.post(url, json=payload, headers=headers, timeout=15)
-                                                        if res.status_code == 200:
-                                                            data = res.json()
-                                                            if 'candidates' in data and len(data['candidates']) > 0:
-                                                                ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
-                                                                thanh_cong = True
-                                                                break
-                                                            else:
-                                                                loi_chi_tiet = "Google từ chối trả lời (có thể vẫn bị vướng từ khóa nhạy cảm cực nặng)."
-                                                        else:
-                                                            loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:100]}..."
-                                                    except Exception as err:
-                                                        loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
-                                                
-                                                if thanh_cong: break
-                                                            
-                                            if not thanh_cong: 
-                                                ca_hien_tai['ai_phan_tich'] = f"🚨 **GOOGLE AI BÁO LỖI:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Lỗi 429 = Đã hết 20 lần/ngày. Lỗi 403 = Key sai. Lỗi 400 = Lỗi gửi dữ liệu)*"
-                                            
-                                            luu_du_lieu_len_may()
-                                            
-                                        except Exception as e:
-                                            ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI HỆ THỐNG:** {e}"
-                                            luu_du_lieu_len_may()
+                                        thanh_cong = False
+                                        loi_chi_tiet = ""
+                                        keys_luot_nay = danh_sach_keys.copy()
+                                        random.shuffle(keys_luot_nay)
                                         
-                                        st.rerun()
+                                        safety_settings = [
+                                            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                                            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                                            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                                            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                                        ]
+                                        
+                                        for key_sach in keys_luot_nay:
+                                            if not key_sach.startswith("AIza"):
+                                                loi_chi_tiet = "Mã Key không hợp lệ. API Key của Google Gemini bắt buộc phải bắt đầu bằng chữ 'AIza'."
+                                                continue
+
+                                            headers = {'Content-Type': 'application/json'}
+                                            payload = {
+                                                "contents": [{"parts": [{"text": prompt}]}],
+                                                "safetySettings": safety_settings
+                                            }
+                                            
+                                            models_to_try = ["gemini-1.5-flash", "gemini-2.5-flash"]
+                                            for model in models_to_try:
+                                                if thanh_cong: break
+                                                try:
+                                                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
+                                                    res = requests.post(url, json=payload, headers=headers, timeout=15)
+                                                    if res.status_code == 200:
+                                                        data = res.json()
+                                                        if 'candidates' in data and len(data['candidates']) > 0:
+                                                            ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
+                                                            thanh_cong = True
+                                                            break
+                                                        else:
+                                                            loi_chi_tiet = "Google từ chối trả lời (có thể bị vướng từ khóa nhạy cảm cực nặng)."
+                                                    else:
+                                                        loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:150]}..."
+                                                except Exception as err:
+                                                    loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
+                                            
+                                            if thanh_cong: break
+                                                        
+                                        if not thanh_cong: 
+                                            st.error(f"🚨 **GOOGLE AI BÁO LỖI:**\n\n`{loi_chi_tiet}`")
+                                            st.warning("💡 Gợi ý: Nếu thầy vừa thay mã Key mới, hãy bấm chọn **Manage app** (hoặc dấu 3 chấm) ở góc dưới/trên cùng bên phải màn hình -> Chọn **Reboot app** để hệ thống nhận Key mới nhé!")
+                                        else:
+                                            luu_du_lieu_len_may()
+                                            st.rerun()
                                 
                         gv_tra_loi = st.chat_input("Nhập tin nhắn hỗ trợ học sinh...")
                         if gv_tra_loi:

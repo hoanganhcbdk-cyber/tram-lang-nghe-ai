@@ -36,7 +36,7 @@ def xoa_rac_html(text):
     return re.sub(r'<.*?>', '', str(text))
 
 # ==========================================
-# 2. CẤU HÌNH GIAO DIỆN & CSS (TRONG SUỐT BÊN TRÁI)
+# 2. CẤU HÌNH GIAO DIỆN & CSS (TRONG SUỐT 100%)
 # ==========================================
 st.set_page_config(page_title="Trạm Lắng Nghe AI", page_icon="🏫", layout="wide", initial_sidebar_state="collapsed")
 
@@ -48,7 +48,7 @@ st.markdown(f"""
     
     .top-title {{ text-align: center; color: {main_color}; font-size: 24px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid {main_color}; padding-bottom: 5px; margin-bottom: 10px; }}
     
-    /* MENU BÊN TRÁI: Trong suốt 100% */
+    /* MENU BÊN TRÁI: Trong suốt tuyệt đối */
     div[data-testid="column"]:nth-of-type(1) {{ background: transparent !important; background-color: transparent !important; border-right: 1px solid #e5e7eb !important; padding-top: 10px !important; }}
     div[data-testid="column"]:nth-of-type(1) > div {{ background: transparent !important; background-color: transparent !important; }}
     div[data-testid="column"]:nth-of-type(1) div[data-testid="stButton"] button {{ background-color: transparent !important; color: #4B5563 !important; border: none !important; padding: 10px 5px !important; width: 100% !important; font-size: 15px !important; font-weight: 600 !important; text-align: left !important; justify-content: flex-start !important; margin-bottom: 5px !important; box-shadow: none !important; }}
@@ -59,15 +59,30 @@ st.markdown(f"""
     .chat-list-btn button {{ width: 100% !important; background-color: white !important; border: 1px solid #eaedf0 !important; border-radius: 8px !important; padding: 12px 10px !important; text-align: left !important; justify-content: flex-start !important; color: #111 !important; margin-bottom: 5px !important; }}
     .chat-list-btn button p {{ margin: 0 !important; line-height: 1.5 !important; font-size: 14px !important; white-space: pre-wrap !important; }}
     .chat-list-btn button:hover {{ background-color: #f3f5f6 !important; border-color: {main_color} !important; }}
+    
+    /* THUẬT TOÁN AUTO-RESPONSIVE (ĐIỆN THOẠI) */
+    @media (max-width: 768px) {{
+        [data-testid="column"]:nth-of-type(1) {{ border-right: none !important; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px; }}
+        [data-testid="column"]:nth-of-type(1) div[data-testid="stVerticalBlock"] {{ flex-direction: row !important; flex-wrap: wrap !important; justify-content: space-around !important; gap: 5px !important; }}
+        [data-testid="column"]:nth-of-type(1) div.element-container {{ width: auto !important; flex: 1 1 auto !important; }}
+        [data-testid="column"]:nth-of-type(1) button {{ text-align: center !important; justify-content: center !important; padding: 8px !important; font-size: 13px !important; margin-bottom: 0 !important; border-radius: 20px !important; background-color: #F3F4F6 !important; }}
+        [data-testid="column"]:nth-of-type(1) button:active {{ background-color: {main_color} !important; color: white !important; }}
+    }}
     </style>
 """, unsafe_allow_html=True)
+
+# THUẬT TOÁN ẨN/HIỆN CỘT TRÊN MOBILE
+if st.session_state.get('active_chat'):
+    st.markdown("<style>@media (max-width: 768px) { [data-testid='column']:nth-of-type(2) { display: none !important; } }</style>", unsafe_allow_html=True)
+else:
+    st.markdown("<style>@media (max-width: 768px) { [data-testid='column']:nth-of-type(3) { display: none !important; } }</style>", unsafe_allow_html=True)
 
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
 except ImportError: HAS_AUTOREFRESH = False
 
-# LẤY VÀ LỌC SẠCH DẤU NGOẶC KÉP CỦA API KEY
+# LẤY API KEY TỪ SECRETS (Lọc bỏ ngoặc kép thừa nếu có)
 try:
     if "API_KEYS" in st.secrets: 
         danh_sach_keys = [k.strip().strip('"').strip("'") for k in st.secrets["API_KEYS"].split(",") if k.strip()]
@@ -172,7 +187,7 @@ if st.session_state.get('current_view') == "landing_page":
         if st.button("Truy Cập Học Sinh ➡️", use_container_width=True):
             st.session_state['current_view'] = "student_view"; st.rerun()
     with col2:
-        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ và nhận gợi ý tư vấn từ ChatGPT.")
+        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ và nhận gợi ý tư vấn từ AI.")
         if st.button("Truy Cập Giáo Viên ➡️", use_container_width=True):
             st.session_state['current_view'] = "teacher_view"; st.rerun()
     with col3:
@@ -236,7 +251,7 @@ elif st.session_state.get('current_view') == "student_view":
                     luu_du_lieu_len_may()
                     st.rerun()
 
-# 3. KHÔNG GIAN GIÁO VIÊN (DÙNG CHATGPT CỦA OPENAI)
+# 3. KHÔNG GIAN GIÁO VIÊN
 elif st.session_state.get('current_view') == "teacher_view":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         user_id = st.session_state.get('current_user')
@@ -340,18 +355,18 @@ elif st.session_state.get('current_view') == "teacher_view":
                                 
                     if phan_mem_hoat_dong and ca_hien_tai.get('trang_thai') != "Đã đóng ca":
                         if ca_hien_tai.get('ai_phan_tich'):
-                            st.success(f"✨ **AI CỐ VẤN (Bởi ChatGPT):**\n\n{ca_hien_tai['ai_phan_tich']}")
+                            st.success(f"✨ **AI CỐ VẤN:**\n\n{ca_hien_tai['ai_phan_tich']}")
                             if st.button("🗑️ Xóa kết quả phân tích để gọn màn hình"):
                                 ca_hien_tai['ai_phan_tich'] = None
                                 luu_du_lieu_len_may(); st.rerun()
                                 
                         if not ca_hien_tai.get('ai_phan_tich'):
-                            if st.button("🧠 Phân tích tâm lý bằng ChatGPT", type="primary", use_container_width=True):
+                            if st.button("🧠 Phân tích tâm lý bằng Google Gemini", type="primary", use_container_width=True):
                                 if not danh_sach_keys:
-                                    ca_hien_tai['ai_phan_tich'] = "🚨 **LỖI:** Chưa cấu hình API Key. Thầy/cô vui lòng vào mục Secrets để dán API Key của OpenAI (sk-...) vào."
+                                    ca_hien_tai['ai_phan_tich'] = "🚨 **LỖI:** Chưa cấu hình API Key. Thầy/cô vui lòng vào mục Secrets để dán API Key của Google (AIza...) vào."
                                     luu_du_lieu_len_may(); st.rerun()
                                 else:
-                                    with st.spinner("ChatGPT đang đọc tin nhắn và phân tích..."):
+                                    with st.spinner("AI đang đọc tin nhắn và phân tích..."):
                                         tin_nhan_moi_lien_tiep = []
                                         for t in reversed(ca_hien_tai['tin_nhan']):
                                             if t.get('nguoi_gui') == "Học sinh": tin_nhan_moi_lien_tiep.insert(0, xoa_rac_html(t.get('noi_dung', '')))
@@ -365,8 +380,9 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         
                                         prompt = f"""[BỐI CẢNH CŨ]: {lich_su_cu if lich_su_cu else 'Không.'}
                                         [TIN MỚI LIÊN TIẾP TỪ HỌC SINH]: "{cum_tin_nhan_moi}"
+                                        
                                         1. Phân tích tâm lý học sinh trong cụm tin nhắn mới.
-                                        2. Đánh giá MỨC ĐỘ RỦI RO (Thấp/Trung/Cao).
+                                        2. Đánh giá MỨC ĐỘ RỦI RO (Thấp/Trung/Cao). Nếu chỉ là cảm ơn/vâng dạ thì rủi ro là Thấp.
                                         Trả lời theo format:
                                         [RỦI RO]: ...
                                         [PHÂN TÍCH NHANH]: ...
@@ -378,42 +394,50 @@ elif st.session_state.get('current_view') == "teacher_view":
                                             keys_luot_nay = danh_sach_keys.copy()
                                             random.shuffle(keys_luot_nay)
                                             
-                                            # ƯU TIÊN CHẠY CHATGPT (OPENAI API)
+                                            # CẤU HÌNH VƯỢT BỘ LỌC AN TOÀN CỦA GOOGLE (DÀNH CHO TÂM LÝ Y KHOA)
+                                            safety_settings = [
+                                                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                                            ]
+                                            
+                                            # ƯU TIÊN CHẠY GOOGLE GEMINI 100%
                                             for key_sach in keys_luot_nay:
-                                                if not key_sach.startswith("sk-"):
-                                                    loi_chi_tiet = "Mã Key không hợp lệ. API Key của ChatGPT bắt buộc phải bắt đầu bằng chữ 'sk-'."
+                                                if not key_sach.startswith("AIza"):
+                                                    loi_chi_tiet = "Mã Key không hợp lệ. API Key của Google Gemini bắt buộc phải bắt đầu bằng chữ 'AIza'."
                                                     continue
 
-                                                headers = {
-                                                    "Content-Type": "application/json",
-                                                    "Authorization": f"Bearer {key_sach}"
-                                                }
-                                                
+                                                headers = {'Content-Type': 'application/json'}
                                                 payload = {
-                                                    "model": "gpt-4o-mini",
-                                                    "messages": [
-                                                        {"role": "system", "content": "Bạn là chuyên gia tư vấn tâm lý học đường, nhạy bén, thấu cảm và không phán xét."},
-                                                        {"role": "user", "content": prompt}
-                                                    ],
-                                                    "temperature": 0.7
+                                                    "contents": [{"parts": [{"text": prompt}]}],
+                                                    "safetySettings": safety_settings
                                                 }
                                                 
-                                                try:
-                                                    res = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=20)
-                                                    if res.status_code == 200:
-                                                        data = res.json()
-                                                        ca_hien_tai['ai_phan_tich'] = data['choices'][0]['message']['content']
-                                                        thanh_cong = True
-                                                        break
-                                                    else:
-                                                        loi_chi_tiet = f"Lỗi OpenAI ({res.status_code}): {res.text[:150]}..."
-                                                except Exception as err:
-                                                    loi_chi_tiet = f"Lỗi kết nối OpenAI: {err}"
+                                                # Thử 2 phiên bản để đảm bảo tỷ lệ thành công cao nhất
+                                                models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+                                                for model in models_to_try:
+                                                    if thanh_cong: break
+                                                    try:
+                                                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
+                                                        res = requests.post(url, json=payload, headers=headers, timeout=15)
+                                                        if res.status_code == 200:
+                                                            data = res.json()
+                                                            if 'candidates' in data and len(data['candidates']) > 0:
+                                                                ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
+                                                                thanh_cong = True
+                                                                break
+                                                            else:
+                                                                loi_chi_tiet = "Google từ chối trả lời (có thể vẫn bị vướng từ khóa nhạy cảm cực nặng)."
+                                                        else:
+                                                            loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:100]}..."
+                                                    except Exception as err:
+                                                        loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
                                                 
                                                 if thanh_cong: break
                                                             
                                             if not thanh_cong: 
-                                                ca_hien_tai['ai_phan_tich'] = f"🚨 **CHATGPT BÁO LỖI CHI TIẾT:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Nếu lỗi 429 'insufficient_quota', tức là tài khoản OpenAI của thầy chưa nạp thẻ Visa để sử dụng. Hãy nạp tối thiểu 5$ trên platform.openai.com nhé!)*"
+                                                ca_hien_tai['ai_phan_tich'] = f"🚨 **GOOGLE AI BÁO LỖI:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Lỗi 429 = Đã hết 20 lần/ngày. Lỗi 403 = Key sai. Lỗi 400 = Lỗi gửi dữ liệu)*"
                                             
                                             luu_du_lieu_len_may()
                                             

@@ -250,9 +250,12 @@ elif st.session_state.get('current_view') == "student_view":
             hinh_thuc_tv = st.radio("Hình thức muốn hỗ trợ:", ["💬 Nhắn tin trên web (Ẩn danh)", "🤝 Hẹn gặp trực tiếp"], key=f"ht_{k}")
             
             ngay_hen, gio_hen = "", ""
-            if "Trực tiếp" in hinh_thuc_tv:
+            # Điều kiện kiểm tra chính xác 100%
+            if hinh_thuc_tv == "🤝 Hẹn gặp trực tiếp":
+                st.info("📅 Thầy/cô sẽ cố gắng sắp xếp thời gian gặp em theo lịch này nhé!")
                 c_ngay, c_gio = st.columns(2)
-                ngay_hen, gio_hen = c_ngay.date_input("Ngày hẹn:", key=f"nh_{k}"), c_gio.time_input("Giờ hẹn:", key=f"gh_{k}")
+                ngay_hen = c_ngay.date_input("Ngày hẹn:", key=f"nh_{k}")
+                gio_hen = c_gio.time_input("Giờ hẹn:", key=f"gh_{k}")
                 
             tam_su_input = st.text_area("Hãy viết ra những điều đang làm em bận lòng nhé...", height=100, key=f"ts_{k}")
             
@@ -266,7 +269,7 @@ elif st.session_state.get('current_view') == "student_view":
                     st.session_state['database'][ma_bi_mat] = {
                         "thoi_gian": get_vn_time().strftime('%d/%m/%Y %H:%M'), "lop": hs_khoi_lop if hs_khoi_lop else "Ẩn danh",
                         "cam_xuc_ban_dau": hs_cam_xuc, "gv_phu_trach": gv_duoc_chon, "hinh_thuc": hinh_thuc_tv,
-                        "lich_hen": f"{ngay_hen.strftime('%d/%m/%Y')} lúc {gio_hen.strftime('%H:%M')}" if "Trực tiếp" in hinh_thuc_tv else "Không",
+                        "lich_hen": f"{ngay_hen.strftime('%d/%m/%Y')} lúc {gio_hen.strftime('%H:%M')}" if hinh_thuc_tv == "🤝 Hẹn gặp trực tiếp" else "Không",
                         "tin_nhan": [{"nguoi_gui": "Học sinh", "noi_dung": tam_su_input, "thoi_gian": get_vn_time().strftime('%H:%M')}],
                         "ai_phan_tich": None, "muc_do_rui_ro": "Chờ AI phân tích", "trang_thai": "Chờ xử lý"
                     }

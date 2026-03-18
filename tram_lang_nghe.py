@@ -155,7 +155,7 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
 # ĐIỀU HƯỚNG CHÍNH CỦA ỨNG DỤNG
 # ==========================================
 
-# 1. TRANG CHỦ (ĐÃ XÓA MẢNG MÀU XANH THEO YÊU CẦU)
+# 1. TRANG CHỦ 
 if st.session_state.get('current_view') == "landing_page":
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     st.markdown(f"""
@@ -171,7 +171,7 @@ if st.session_state.get('current_view') == "landing_page":
         if st.button("Truy Cập Học Sinh ➡️", use_container_width=True):
             st.session_state['current_view'] = "student_view"; st.rerun()
     with col2:
-        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ và nhận gợi ý tư vấn từ AI.")
+        st.success("### 👨‍🏫 Cổng Giáo Viên\nQuản lý hồ sơ và nhận gợi ý tư vấn từ ChatGPT.")
         if st.button("Truy Cập Giáo Viên ➡️", use_container_width=True):
             st.session_state['current_view'] = "teacher_view"; st.rerun()
     with col3:
@@ -198,7 +198,7 @@ elif st.session_state.get('current_view') == "student_view":
             
         tam_su_input = st.text_area("Kể chi tiết câu chuyện:", height=100)
         if st.button("🚀 Gửi an toàn", type="primary"):
-            if not ma_xac_thuc or ma_xac_thuc.upper() != MA_BAO_MAT_TRUONG: st.error("❌ Sai Mã bảo mật!")
+            if not ma_xac_thuc or ma_xac_thuc.upper() != "123456": st.error("❌ Sai Mã bảo mật!")
             elif tam_su_input:
                 ma_bi_mat = f"HS-{random.randint(1000, 9999)}"
                 st.session_state['database'][ma_bi_mat] = {
@@ -287,7 +287,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                             
                             st.markdown('<div class="chat-list-btn">', unsafe_allow_html=True)
                             
-                            # ĐÃ SỬA LỖI SPAN HTML (Chỉ dùng Text thuần túy)
+                            # Text sạch sẽ không có HTML
                             label_nut = f"{icon_tt} {ma_ca} (Lớp {ca.get('lop', '')})\n🕒 {thoi_gian_ca} | 💬 {tn_rut_gon}"
                             
                             btn_type = "primary" if st.session_state.get('active_chat') == ma_ca else "secondary"
@@ -342,14 +342,14 @@ elif st.session_state.get('current_view') == "teacher_view":
                                 
                     if phan_mem_hoat_dong and ca_hien_tai.get('trang_thai') != "Đã đóng ca":
                         if ca_hien_tai.get('ai_phan_tich'):
-                            st.success(f"✨ **AI CỐ VẤN:**\n\n{ca_hien_tai['ai_phan_tich']}")
+                            st.success(f"✨ **AI CỐ VẤN (Bởi ChatGPT):**\n\n{ca_hien_tai['ai_phan_tich']}")
                             if st.button("🗑️ Xóa kết quả phân tích để gọn màn hình"):
                                 ca_hien_tai['ai_phan_tich'] = None
                                 luu_du_lieu_len_may(); st.rerun()
                                 
                         if not ca_hien_tai.get('ai_phan_tich'):
-                            if st.button("🧠 Phân tích tâm lý bằng AI", type="primary", use_container_width=True):
-                                with st.spinner("AI đang kết nối Google..."):
+                            if st.button("🧠 Phân tích bằng ChatGPT", type="primary", use_container_width=True):
+                                with st.spinner("ChatGPT đang phân tích chuyên sâu..."):
                                     tin_nhan_moi_lien_tiep = []
                                     for t in reversed(ca_hien_tai['tin_nhan']):
                                         if t.get('nguoi_gui') == "Học sinh": tin_nhan_moi_lien_tiep.insert(0, t.get('noi_dung', ''))
@@ -362,53 +362,63 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         for t in ca_hien_tai['tin_nhan'][:lich_su_cu_len]: lich_su_cu += f"{t.get('nguoi_gui')}: {t.get('noi_dung')}\n"
                                     
                                     prompt = f"""[BỐI CẢNH CŨ]: {lich_su_cu if lich_su_cu else 'Không.'}
-                                    [TIN MỚI LIÊN TIẾP]: "{cum_tin_nhan_moi}"
-                                    1. CHỈ PHÂN TÍCH THÁI ĐỘ TRONG CỤM TIN MỚI NÀY.
-                                    2. Nếu tin mới là: cảm ơn, vâng dạ, đã hiểu -> BẮT BUỘC RỦI RO: Thấp.
-                                    Trả lời:
-                                    [RỦI RO]: Thấp/Trung/Cao
-                                    [PHÂN TÍCH NHANH]: ...
-                                    [GỢI Ý TRẢ LỜI]: ..."""
+                                    [TIN MỚI LIÊN TIẾP TỪ HỌC SINH]: "{cum_tin_nhan_moi}"
+                                    
+                                    Nhiệm vụ của bạn:
+                                    1. Phân tích thái độ và tâm lý của học sinh trong cụm tin nhắn mới.
+                                    2. Đánh giá MỨC ĐỘ RỦI RO tâm lý (Thấp/Trung bình/Cao). Lưu ý: Nếu tin nhắn chỉ là cảm ơn, dạ vâng, đã hiểu thì rủi ro bắt buộc là Thấp.
+                                    
+                                    Hãy trả lời chính xác theo format sau:
+                                    [RỦI RO]: <Mức độ>
+                                    [PHÂN TÍCH NHANH]: <Phân tích của bạn>
+                                    [GỢI Ý TRẢ LỜI]: <Viết sẵn 1 câu để giáo viên có thể copy gửi cho học sinh>"""
                                     
                                     try:
-                                        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-                                        headers = {'Content-Type': 'application/json'}
                                         thanh_cong = False
                                         loi_chi_tiet = ""
-                                        
                                         keys_luot_nay = danh_sach_keys.copy()
                                         random.shuffle(keys_luot_nay)
                                         
-                                        # THUẬT TOÁN ĐẢM BẢO HOẠT ĐỘNG (Thử model 2.5 trước, nếu lỗi chuyển 1.5)
-                                        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
-                                        for model in models_to_try:
-                                            if thanh_cong: break
-                                            for key_hien_tai in keys_luot_nay:
-                                                try:
-                                                    res = requests.post(
-                                                        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_hien_tai}", 
-                                                        json=payload, headers=headers, timeout=15
-                                                    )
-                                                    if res.status_code == 200:
-                                                        data = res.json()
-                                                        if 'candidates' in data and len(data['candidates']) > 0:
-                                                            ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
-                                                            thanh_cong = True
-                                                            break
-                                                        else:
-                                                            loi_chi_tiet = "Lỗi bảo mật nội dung: Google chặn do chứa từ khóa nhạy cảm."
-                                                    else:
-                                                        # IN CHI TIẾT ĐỂ BẮT LỖI
-                                                        loi_chi_tiet = f"Lỗi {res.status_code}: {res.text}"
-                                                except Exception as req_err:
-                                                    loi_chi_tiet = f"Lỗi Request Timeout: {req_err}"
+                                        # TÍCH HỢP ĐỘNG CƠ CHATGPT (OPENAI API)
+                                        for key_hien_tai in keys_luot_nay:
+                                            key_sach = key_hien_tai.strip()
+                                            if not key_sach.startswith("sk-"):
+                                                loi_chi_tiet = "Lỗi: API Key trong phần Secrets không phải của OpenAI (Key OpenAI phải bắt đầu bằng chữ 'sk-')"
+                                                continue
+                                                
+                                            headers = {
+                                                "Content-Type": "application/json",
+                                                "Authorization": f"Bearer {key_sach}"
+                                            }
+                                            
+                                            payload = {
+                                                "model": "gpt-4o-mini", # Model nhanh và cực thông minh của ChatGPT
+                                                "messages": [
+                                                    {"role": "system", "content": "Bạn là chuyên gia tư vấn tâm lý học đường dày dặn kinh nghiệm, thấu cảm và nhạy bén."},
+                                                    {"role": "user", "content": prompt}
+                                                ],
+                                                "temperature": 0.7
+                                            }
+                                            
+                                            try:
+                                                res = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=20)
+                                                if res.status_code == 200:
+                                                    data = res.json()
+                                                    ca_hien_tai['ai_phan_tich'] = data['choices'][0]['message']['content']
+                                                    thanh_cong = True
+                                                    break
+                                                else:
+                                                    # Bắt lỗi chuẩn từ OpenAI
+                                                    loi_chi_tiet = f"Lỗi {res.status_code}: {res.text}"
+                                            except Exception as req_err:
+                                                loi_chi_tiet = f"Lỗi Request Timeout: Máy chủ OpenAI phản hồi quá chậm ({req_err})"
                                                     
                                         if not thanh_cong: 
-                                            # HIỂN THỊ ĐỎ CHÓT CHÍNH XÁC NGUYÊN NHÂN LỖI
-                                            ca_hien_tai['ai_phan_tich'] = f"🚨 **AI BÁO LỖI CHI TIẾT:**\n\n`{loi_chi_tiet}`\n\n*(Giải mã: Lỗi 429 = Vượt quá 20 lần/ngày. Lỗi 403 = API Key không hợp lệ. Lỗi 400 = Từ khóa bị cấm)*"
+                                            # BÁO LỖI ĐỎ CHÓT NẾU CHATGPT THẤT BẠI
+                                            ca_hien_tai['ai_phan_tich'] = f"🚨 **CHATGPT BÁO LỖI:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Hãy chắc chắn thầy đã lấy đúng Key của OpenAI, bắt đầu bằng sk-... và tài khoản vẫn còn tiền/lượt sử dụng)*"
                                         luu_du_lieu_len_may(); st.rerun()
                                     except Exception as e:
-                                        ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI HỆ THỐNG:** {e}"
+                                        ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI CHƯA XÁC ĐỊNH:** {e}"
                                         luu_du_lieu_len_may(); st.rerun()
                                 
                         gv_tra_loi = st.chat_input("Nhập tin nhắn hỗ trợ học sinh...")
@@ -435,7 +445,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                     if file_anh is not None: st.session_state['users'][user_id]['avatar'] = base64.b64encode(file_anh.read()).decode('utf-8')
                     luu_du_lieu_len_may(); st.rerun()
 
-# 4. KHÔNG GIAN BẢN QUẢN LÝ
+# 4. KHÔNG GIAN QUẢN TRỊ ADMIN 
 elif st.session_state.get('current_view') == "admin_view":
     if kiem_tra_dang_nhap(role_can_thiet='admin'):
         user_hien_tai = st.session_state.get('current_user')
@@ -461,6 +471,7 @@ elif st.session_state.get('current_view') == "admin_view":
 
         with col_main_ad:
             if HAS_AUTOREFRESH: st_autorefresh(interval=10000, limit=None, key="admin_refresh")
+            
             if not phan_mem_hoat_dong and user_hien_tai != "hoanganh_dev":
                 st.error("⛔ PHẦN MỀM ĐÃ HẾT HẠN HOẶC CHƯA KÍCH HOẠT BẢN QUYỀN.")
                 st.markdown("---")

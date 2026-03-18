@@ -287,7 +287,6 @@ elif st.session_state.get('current_view') == "teacher_view":
                             tn_rut_gon = tn_cuoi[:35] + "..." if len(tn_cuoi) > 35 else tn_cuoi
                             
                             st.markdown('<div class="chat-list-btn">', unsafe_allow_html=True)
-                            
                             label_nut = f"{icon_tt} {ma_ca} (Lớp {ca.get('lop', '')})\n🕒 {thoi_gian_ca} | 💬 {tn_rut_gon}"
                             btn_type = "primary" if st.session_state.get('active_chat') == ma_ca else "secondary"
                             if st.button(label_nut, key=f"btn_{ma_ca}", type=btn_type):
@@ -379,6 +378,14 @@ elif st.session_state.get('current_view') == "teacher_view":
                                             keys_luot_nay = danh_sach_keys.copy()
                                             random.shuffle(keys_luot_nay)
                                             
+                                            # CẤU HÌNH VƯỢT BỘ LỌC AN TOÀN CỦA GOOGLE (DÀNH CHO TÂM LÝ Y KHOA)
+                                            safety_settings = [
+                                                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                                            ]
+                                            
                                             # ƯU TIÊN CHẠY GOOGLE GEMINI 100%
                                             for key_sach in keys_luot_nay:
                                                 if not key_sach.startswith("AIza"):
@@ -386,7 +393,10 @@ elif st.session_state.get('current_view') == "teacher_view":
                                                     continue
 
                                                 headers = {'Content-Type': 'application/json'}
-                                                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                                                payload = {
+                                                    "contents": [{"parts": [{"text": prompt}]}],
+                                                    "safetySettings": safety_settings
+                                                }
                                                 
                                                 models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
                                                 for model in models_to_try:
@@ -401,7 +411,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                                                                 thanh_cong = True
                                                                 break
                                                             else:
-                                                                loi_chi_tiet = "Google chặn phân tích do nghi ngờ nội dung nhạy cảm."
+                                                                loi_chi_tiet = "Google vẫn chặn phân tích dù đã cấu hình. Vui lòng thử diễn đạt lại."
                                                         else:
                                                             loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:100]}..."
                                                     except Exception as err:
@@ -411,10 +421,16 @@ elif st.session_state.get('current_view') == "teacher_view":
                                                             
                                             if not thanh_cong: 
                                                 ca_hien_tai['ai_phan_tich'] = f"🚨 **AI BÁO LỖI CHI TIẾT:**\n\n`{loi_chi_tiet}`\n\n*(Lưu ý: Nếu lỗi 429 = Đã hết 20 lần/ngày. Hãy mượn Gmail khác để tạo Key Gemini mới và dán vào Secrets)*"
-                                            luu_du_lieu_len_may(); st.rerun()
+                                            
+                                            # Lưu trực tiếp vào Database, không cần st.rerun() ngay lập tức để người dùng xem kết quả
+                                            luu_du_lieu_len_may()
+                                            
                                         except Exception as e:
                                             ca_hien_tai['ai_phan_tich'] = f"🚨 **LỖI HỆ THỐNG:** {e}"
-                                            luu_du_lieu_len_may(); st.rerun()
+                                            luu_du_lieu_len_may()
+                                        
+                                        # Bắt buộc Rerun cuối cùng để hiện bảng báo cáo
+                                        st.rerun()
                                 
                         gv_tra_loi = st.chat_input("Nhập tin nhắn hỗ trợ học sinh...")
                         if gv_tra_loi:

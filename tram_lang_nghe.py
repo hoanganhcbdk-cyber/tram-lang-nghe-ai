@@ -10,7 +10,8 @@ import re
 # HÀM LẤY GIỜ VIỆT NAM (UTC+7)
 # ==========================================
 def get_vn_time():
-    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
+    # Lấy giờ UTC hiện tại và cộng thêm 7 tiếng
+    return datetime.datetime.utcnow() + datetime.timedelta(hours=7)
 
 # ==========================================
 # 1. LÁ CHẮN BẢO VỆ BỘ NHỚ
@@ -23,8 +24,9 @@ def khoi_tao_he_thong():
     if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "Xanh Mặc Định"
     if 'just_updated' not in st.session_state: st.session_state['just_updated'] = False 
     
-    if 'clear_key' not in st.session_state: st.session_state['clear_key'] = 0
-    if 'thong_bao_hs' not in st.session_state: st.session_state['thong_bao_hs'] = None
+    # Bổ sung biến để làm sạch form sau khi gửi
+    if 'form_key' not in st.session_state: st.session_state['form_key'] = 0 
+    if 'show_success' not in st.session_state: st.session_state['show_success'] = None
     
     if 'users' not in st.session_state:
         st.session_state['users'] = {
@@ -52,7 +54,7 @@ st.set_page_config(page_title="Hệ thống Tư vấn Học đường AI", page_
 
 st.markdown(f"""
     <style>
-    /* HÌNH NỀN CÂY TRE CHÌM */
+    /* HÌNH NỀN CÂY TRE CHÌM (Dùng data-testid để xuyên qua lớp nền trắng của Streamlit) */
     [data-testid="stAppViewContainer"] {{
         background-image: linear-gradient(rgba(255, 255, 255, 0.90), rgba(255, 255, 255, 0.90)), url("https://images.unsplash.com/photo-1533038590840-1cbea676aeb0?q=80&w=2070&auto=format&fit=crop") !important;
         background-size: cover !important;
@@ -118,7 +120,7 @@ except: danh_sach_keys = []
 FIREBASE_URL = "https://tram-lang-nghe-data-default-rtdb.firebaseio.com"
 
 # ==========================================
-# 3. ĐỒNG BỘ ĐÁM MÂY 
+# 3. ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY 
 # ==========================================
 def tai_du_lieu_tu_may():
     try:
@@ -237,20 +239,22 @@ elif st.session_state.get('current_view') == "student_view":
         st.markdown("<div style='background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
         tab_gui, tab_xem = st.tabs(["📝 Gửi Tâm Sự", "💬 Phòng Chat Bảo Mật"])
         with tab_gui:
-            if st.session_state.get('thong_bao_hs'):
-                st.success(f"✅ Đã gửi thành công! Em hãy lưu lại mã tra cứu này để xem Thầy/Cô trả lời nhé: **{st.session_state['thong_bao_hs']}**")
+            # HIỂN THỊ THÔNG BÁO VÀ BÓNG BAY TỪ LẦN GỬI TRƯỚC
+            if st.session_state.get('show_success'):
+                st.success(f"✅ Gửi thành công! Để xem lại thầy cô trả lời, em hãy lưu lại mã này nhé: **{st.session_state['show_success']}**")
                 st.balloons()
-                st.session_state['thong_bao_hs'] = None
+                st.session_state['show_success'] = None
                 
             ma_bao_mat_he_thong = st.session_state['config'].get('school_code', '123456')
-            k = st.session_state['clear_key']
+            
+            # SỬ DỤNG KEY ĐỘNG ĐỂ LÀM SẠCH FORM
+            k = st.session_state.get('form_key', 0)
             
             ma_xac_thuc = st.text_input("🔑 Mã bảo mật của trường:", type="password", key=f"ma_{k}")
             hs_khoi_lop = st.text_input("Khối/Lớp của em (Không bắt buộc):", key=f"lop_{k}")
             hs_cam_xuc = st.selectbox("Ngay lúc này, em cảm thấy thế nào?", ["😐 Bình thường", "😔 Buồn bã", "😰 Áp lực", "😡 Tức giận", "😨 Sợ hãi", "😭 Tuyệt vọng"], key=f"cx_{k}")
             gv_duoc_chon = st.selectbox("Chọn Thầy/Cô để tâm sự:", options=list(danh_sach_gv.keys()), format_func=lambda x: danh_sach_gv.get(x, x), key=f"gv_{k}")
             hinh_thuc_tv = st.radio("Hình thức muốn hỗ trợ:", ["💬 Nhắn tin trên web (Ẩn danh)", "🤝 Hẹn gặp trực tiếp"], key=f"ht_{k}")
-            
             ngay_hen, gio_hen = "", ""
             if "Trực tiếp" in hinh_thuc_tv:
                 c_ngay, c_gio = st.columns(2)
@@ -258,8 +262,8 @@ elif st.session_state.get('current_view') == "student_view":
                 
             tam_su_input = st.text_area("Hãy viết ra những điều đang làm em bận lòng nhé...", height=100, key=f"ts_{k}")
             
-            if st.button("🚀 Gửi đi an toàn", type="primary"):
-                if not ma_xac_thuc or ma_xac_thuc.strip().upper() != str(ma_bao_mat_he_thong).strip().upper(): 
+            if st.button("🚀 Gửi đi an toàn", type="primary", key=f"btn_{k}"):
+                if not ma_xac_thuc or str(ma_xac_thuc).strip().upper() != str(ma_bao_mat_he_thong).strip().upper(): 
                     st.error("❌ Sai Mã bảo mật! Vui lòng hỏi Thầy Cô/Ban Giám Hiệu để lấy mã chính xác.")
                 elif not tam_su_input.strip():
                     st.warning("⚠️ Vui lòng nhập nội dung tâm sự trước khi gửi.")
@@ -273,8 +277,10 @@ elif st.session_state.get('current_view') == "student_view":
                         "ai_phan_tich": None, "muc_do_rui_ro": "Chờ AI phân tích", "trang_thai": "Chờ xử lý"
                     }
                     luu_du_lieu_len_may()
-                    st.session_state['thong_bao_hs'] = ma_bi_mat
-                    st.session_state['clear_key'] += 1
+                    
+                    # Bật cờ thành công và Tăng Key để đổi form mới (Xóa trắng)
+                    st.session_state['show_success'] = ma_bi_mat
+                    st.session_state['form_key'] = k + 1
                     st.rerun()
 
         with tab_xem:
@@ -416,9 +422,9 @@ elif st.session_state.get('current_view') == "teacher_view":
                                 luu_du_lieu_len_may(); st.rerun()
                                 
                         if not ca_hien_tai.get('ai_phan_tich'):
-                            if st.button("🧠 AI Phân tích Tâm lý (Google Gemini)", type="primary", use_container_width=True):
+                            if st.button("🧠 Phân tích tâm lý bằng AI (OpenAI/Google)", type="primary", use_container_width=True):
                                 if not danh_sach_keys:
-                                    st.error("🚨 **CHƯA CÓ API KEY:** Hệ thống chưa nhận được Key của Google. Thầy hãy kiểm tra lại mục Secrets.")
+                                    st.error("🚨 **CHƯA CÓ API KEY:** Hệ thống chưa nhận được Key. Thầy hãy kiểm tra lại mục Secrets.")
                                 else:
                                     with st.spinner("AI đang đọc và phân tích tâm lý học sinh..."):
                                         tin_nhan_moi_lien_tiep = []
@@ -434,8 +440,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         
                                         prompt = f"""[BỐI CẢNH CŨ]: {lich_su_cu if lich_su_cu else 'Không.'}
                                         [TIN MỚI LIÊN TIẾP TỪ HỌC SINH]: "{cum_tin_nhan_moi}"
-                                        
-                                        1. Phân tích tâm lý học sinh trong cụm tin nhắn mới.
+                                        1. Phân tích tâm lý học sinh.
                                         2. Đánh giá MỨC ĐỘ RỦI RO (Thấp/Trung/Cao). Nếu chỉ là cảm ơn/vâng dạ thì rủi ro là Thấp.
                                         Trả lời theo format:
                                         [RỦI RO]: ...
@@ -447,53 +452,44 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         keys_luot_nay = danh_sach_keys.copy()
                                         random.shuffle(keys_luot_nay)
                                         
-                                        safety_settings = [
-                                            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                                            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                                            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                                            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-                                        ]
-                                        
                                         for key_sach in keys_luot_nay:
-                                            if not key_sach.startswith("AIza"):
-                                                loi_chi_tiet = "Mã Key không hợp lệ. API Key của Google Gemini bắt buộc phải bắt đầu bằng chữ 'AIza'."
-                                                continue
-
-                                            headers = {'Content-Type': 'application/json'}
-                                            payload = {
-                                                "contents": [{"parts": [{"text": prompt}]}],
-                                                "safetySettings": safety_settings
-                                            }
-                                            
-                                            # ĐÃ SỬA LẠI THÀNH MÃ CHUẨN ĐỂ KHÔNG BỊ LỖI 404
-                                            models_to_try = ["gemini-1.5-flash-latest", "gemini-pro"]
-                                            for model in models_to_try:
-                                                if thanh_cong: break
+                                            # CHATGPT
+                                            if key_sach.startswith("sk-"):
+                                                headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key_sach}"}
+                                                payload = {"model": "gpt-4o-mini", "messages": [{"role": "system", "content": "Bạn là chuyên gia tư vấn tâm lý học đường."}, {"role": "user", "content": prompt}], "temperature": 0.7}
                                                 try:
-                                                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
-                                                    res = requests.post(url, json=payload, headers=headers, timeout=15)
+                                                    res = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=20)
+                                                    if res.status_code == 200:
+                                                        ca_hien_tai['ai_phan_tich'] = res.json()['choices'][0]['message']['content']
+                                                        thanh_cong = True; break
+                                                    else: loi_chi_tiet = f"Lỗi OpenAI: {res.text}"
+                                                except Exception as err: loi_chi_tiet = f"Lỗi OpenAI: {err}"
+                                            
+                                            # GOOGLE GEMINI
+                                            elif key_sach.startswith("AIza"):
+                                                safety_settings = [
+                                                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                                                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                                                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                                                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                                                ]
+                                                headers = {'Content-Type': 'application/json'}
+                                                payload = {"contents": [{"parts": [{"text": prompt}]}], "safetySettings": safety_settings}
+                                                try:
+                                                    res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key_sach}", json=payload, headers=headers, timeout=15)
                                                     if res.status_code == 200:
                                                         data = res.json()
                                                         if 'candidates' in data and len(data['candidates']) > 0:
                                                             ca_hien_tai['ai_phan_tich'] = data['candidates'][0]['content']['parts'][0]['text']
-                                                            thanh_cong = True
-                                                            break
-                                                        else:
-                                                            loi_chi_tiet = "Google từ chối trả lời do bộ lọc an toàn."
-                                                    else:
-                                                        loi_chi_tiet = f"Lỗi Google {model} ({res.status_code}): {res.text[:150]}..."
-                                                except Exception as err:
-                                                    loi_chi_tiet = f"Lỗi kết nối Google ({model}): {err}"
-                                            
-                                            if thanh_cong: break
-                                                        
-                                        if not thanh_cong: 
-                                            st.error(f"🚨 **GOOGLE AI BÁO LỖI:**\n\n`{loi_chi_tiet}`")
-                                        else:
-                                            luu_du_lieu_len_may()
-                                            st.rerun()
+                                                            thanh_cong = True; break
+                                                        else: loi_chi_tiet = "Google từ chối trả lời."
+                                                    else: loi_chi_tiet = f"Lỗi Google: {res.text[:150]}..."
+                                                except Exception as err: loi_chi_tiet = f"Lỗi kết nối Google: {err}"
+                                        
+                                        if not thanh_cong: st.error(f"🚨 **AI BÁO LỖI:**\n\n`{loi_chi_tiet}`")
+                                        else: luu_du_lieu_len_may(); st.rerun()
                                 
-                        gv_tra_loi = st.chat_input("Nhập tin nhắn hỗ trợ học sinh...")
+                        gv_tra_loi = st.chat_input("Nhập tin nhắn tư vấn gửi cho học sinh...")
                         if gv_tra_loi:
                             ca_hien_tai['tin_nhan'].append({"nguoi_gui": "Giáo viên", "noi_dung": gv_tra_loi, "thoi_gian": get_vn_time().strftime('%H:%M')})
                             ca_hien_tai['trang_thai'] = "GV đã phản hồi"
@@ -580,7 +576,6 @@ elif st.session_state.get('current_view') == "admin_view":
                             c_del1, c_del2 = st.columns([5, 1])
                             c_del1.caption(f"**Rủi ro AI:** {ca.get('muc_do_rui_ro','')}")
                             
-                            # NÚT XÓA CA TƯ VẤN 
                             if c_del2.button("🗑️ Xóa ca này", key=f"del_{ma_ca}", type="primary"):
                                 del st.session_state['database'][ma_ca]
                                 luu_du_lieu_len_may()

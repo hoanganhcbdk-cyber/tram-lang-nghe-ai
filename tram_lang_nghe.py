@@ -94,6 +94,10 @@ st.markdown(f"""
         [data-testid="column"]:nth-of-type(1) button {{ text-align: center !important; justify-content: center !important; padding: 8px !important; font-size: 13px !important; margin-bottom: 0 !important; border-radius: 20px !important; background-color: #F3F4F6 !important; }}
         [data-testid="column"]:nth-of-type(1) button:active {{ background-color: {main_color} !important; color: white !important; }}
     }}
+    
+    /* STYLE CHO NÚT XANH GIỚI THIỆU & HƯỚNG DẪN */
+    .green-btn button {{ background-color: #0f766e !important; color: white !important; border-radius: 8px !important; font-weight: bold !important; border: none !important; }}
+    .green-btn button:hover {{ background-color: #0d9488 !important; transform: scale(1.02); transition: 0.2s; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -201,12 +205,29 @@ def kiem_tra_dang_nhap(role_can_thiet=None):
 if st.session_state.get('current_view') == "landing_page":
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     st.markdown(f"""
-        <div style='text-align: center; background: rgba(255,255,255,0.85); padding: 40px 20px; border-radius: 20px; margin-bottom: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.5);'>
+        <div style='text-align: center; background: rgba(255,255,255,0.85); padding: 40px 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.5);'>
             <h1 style='color: {main_color}; font-weight: 900; margin-top: 0; font-size: 40px; text-transform: uppercase; letter-spacing: 1px;'>HỆ THỐNG TƯ VẤN HỌC ĐƯỜNG AI</h1>
             <p style='color: #475569; font-size: 18px; max-width: 650px; margin: 10px auto; font-weight: 500;'>Không gian an toàn, tĩnh tại để học sinh chia sẻ cảm xúc và nhận hỗ trợ kịp thời từ Trí tuệ Nhân tạo & Đội ngũ Chuyên gia.</p>
         </div>
     """, unsafe_allow_html=True)
     
+    # 2 NÚT MỚI: GIỚI THIỆU & HƯỚNG DẪN
+    c_btn1, c_btn2, c_btn3, c_btn4 = st.columns([1, 1.5, 1.5, 1])
+    with c_btn2:
+        st.markdown('<div class="green-btn">', unsafe_allow_html=True)
+        if st.button("📄 Giới thiệu App", use_container_width=True):
+            st.session_state['current_view'] = "intro_view"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    with c_btn3:
+        st.markdown('<div class="green-btn">', unsafe_allow_html=True)
+        if st.button("📖 Hướng dẫn sử dụng", use_container_width=True):
+            st.session_state['current_view'] = "guide_view"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3, gap="large")
     with col1:
         st.markdown(f"<div style='background: rgba(255,255,255,0.9); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border: 1px solid #eee; height: 100%;'><h3 style='color:#334155;'>🎓 Cổng Học Sinh</h3><p style='color:#64748b;'>Check-in cảm xúc mỗi ngày, ẩn danh an toàn và trò chuyện 24/7 với Trợ lý AI thấu cảm.</p></div>", unsafe_allow_html=True)
@@ -222,6 +243,65 @@ if st.session_state.get('current_view') == "landing_page":
             st.session_state['current_view'] = "admin_view"; st.rerun()
             
     st.markdown("<br><hr style='opacity: 0.3'><p style='text-align: center; color: #64748b; font-size: 13px; font-weight: bold;'>Bản quyền thuộc về: Lý Hoàng Anh - Bảo mật tuyệt đối dữ liệu học đường</p>", unsafe_allow_html=True)
+
+# 1.1 TRANG GIỚI THIỆU APP
+elif st.session_state.get('current_view') == "intro_view":
+    if st.button("⬅️ Trở về Trang chủ"): st.session_state['current_view'] = "landing_page"; st.rerun()
+    st.markdown("""
+        <div style='background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px;'>
+            <h2 style='text-align: center; color: #0068ff;'>🌿 GIỚI THIỆU TRẠM LẮNG NGHE AI</h2>
+            <hr>
+            <p style='font-size: 16px; line-height: 1.6;'>
+                <b>Trạm Lắng Nghe AI</b> là Hệ thống Tư vấn Tâm lý Học đường tiên tiến, tích hợp công nghệ Trí tuệ Nhân tạo (Google Gemini) nhằm mang đến một không gian chữa lành, an toàn và bảo mật tuyệt đối cho học sinh.
+            </p>
+            <h4 style='color: #0f766e;'>✨ TÍNH NĂNG NỔI BẬT:</h4>
+            <ul style='font-size: 16px; line-height: 1.8;'>
+                <li><b>Giao tiếp Ẩn danh 100%:</b> Giúp học sinh gỡ bỏ rào cản tâm lý, tự do chia sẻ những áp lực, khó khăn mà không sợ bị phán xét.</li>
+                <li><b>Trợ lý AI Đột phá:</b> Tự động đọc hiểu văn bản, phân tích tâm lý, đánh giá mức độ rủi ro (Cấp bách/Trung bình/Thấp) và gợi ý kịch bản phản hồi chuyên nghiệp cho Giáo viên.</li>
+                <li><b>Bảo mật Hệ thống:</b> Tự động làm sạch biểu mẫu để chống spam. Bảo vệ cổng truy cập học sinh bằng Mã định danh nội bộ của trường.</li>
+                <li><b>Quản trị Toàn diện:</b> Cung cấp Dashboard số hóa biểu đồ sức khỏe tinh thần cho Ban Giám hiệu theo thời gian thực.</li>
+            </ul>
+            <br><hr>
+            <h4 style='color: #1f2937; text-align: center;'>© BẢN QUYỀN SẢN PHẨM</h4>
+            <div style='text-align: center; font-size: 15px; color: #4b5563;'>
+                <p><b>Tác giả:</b> Thầy Lý Hoàng Anh</p>
+                <p>Bản quyền phần mềm thuộc về tác giả. Sản phẩm tham gia Cuộc thi Sáng tạo với AI trong Giáo dục năm học 2025 - 2026.</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# 1.2 TRANG HƯỚNG DẪN SỬ DỤNG
+elif st.session_state.get('current_view') == "guide_view":
+    if st.button("⬅️ Trở về Trang chủ"): st.session_state['current_view'] = "landing_page"; st.rerun()
+    st.markdown("""
+        <div style='background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px;'>
+            <h2 style='text-align: center; color: #0068ff;'>📖 HƯỚNG DẪN SỬ DỤNG HỆ THỐNG</h2>
+            <hr>
+            
+            <h4 style='color: #0f766e;'>1. Dành cho Học sinh (Cổng Học Sinh)</h4>
+            <ul style='font-size: 15px; line-height: 1.6;'>
+                <li><b>Gửi tâm sự:</b> Truy cập Cổng Học Sinh ➔ Nhập <b>Mã bảo mật</b> của trường ➔ Lựa chọn Cảm xúc & Thầy/Cô muốn tâm sự ➔ Viết nội dung ➔ Bấm <b>Gửi đi an toàn</b>.</li>
+                <li><b>Nhận lời khuyên:</b> Sau khi gửi, hãy ghi lại <b>Mã tra cứu</b> (VD: HS-1234) hiển thị trên màn hình. Chuyển sang Tab <b>Phòng Chat Bảo Mật</b>, nhập mã này để trò chuyện ẩn danh với Thầy/Cô.</li>
+            </ul>
+            <br>
+            
+            <h4 style='color: #0f766e;'>2. Dành cho Giáo viên (Cổng Giáo Viên)</h4>
+            <ul style='font-size: 15px; line-height: 1.6;'>
+                <li><b>Tiếp nhận ca tư vấn:</b> Đăng nhập tài khoản ➔ Mở mục <b>Danh sách cần hỗ trợ</b> (chú ý các ca có chấm màu Đỏ/Vàng là ca chưa xử lý). Bấm vào một học sinh để xem chi tiết.</li>
+                <li><b>Sử dụng AI phân tích:</b> Nhấn nút <b>Phân tích tâm lý bằng AI</b>. Đợi vài giây để hệ thống trả về kết quả Đánh giá rủi ro và Kịch bản gợi ý phản hồi.</li>
+                <li><b>Trả lời học sinh:</b> Soạn lời khuyên vào khung chat bên dưới và nhấn Enter. Bấm <b>Đóng / Trở lại</b> khi vấn đề của học sinh đã được giải quyết xong.</li>
+            </ul>
+            <br>
+            
+            <h4 style='color: #0f766e;'>3. Dành cho Ban Giám Hiệu (Cổng Quản Trị)</h4>
+            <ul style='font-size: 15px; line-height: 1.6;'>
+                <li>Đăng nhập bằng tài khoản <b>Admin</b> để theo dõi Thống kê tổng quan toàn trường.</li>
+                <li>Mục <b>Giám sát Hồ sơ</b> cho phép đọc lại mọi cuộc trò chuyện và Xóa các ca bị spam.</li>
+                <li>Mục <b>Quản lý Nhân sự</b> dùng để tạo mới hoặc đổi mật khẩu cho tài khoản Giáo viên.</li>
+                <li>Mục <b>Cài đặt Hệ thống</b> dùng để thay đổi Mã bảo mật nội bộ dành cho Học sinh.</li>
+            </ul>
+        </div>
+    """, unsafe_allow_html=True)
 
 # 2. KHÔNG GIAN HỌC SINH
 elif st.session_state.get('current_view') == "student_view":
@@ -304,7 +384,7 @@ elif st.session_state.get('current_view') == "student_view":
                         st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-# 3. KHÔNG GIAN GIÁO VIÊN
+# 3. KHÔNG GIAN GIÁO VIÊN (ĐÃ BẢO LƯU 100% CODE AI CỦA THẦY)
 elif st.session_state.get('current_view') == "teacher_view":
     if kiem_tra_dang_nhap(role_can_thiet='teacher'):
         user_id = st.session_state.get('current_user')
@@ -451,7 +531,7 @@ elif st.session_state.get('current_view') == "teacher_view":
                                         random.shuffle(keys_luot_nay)
                                         
                                         # ==============================================================
-                                        # PHỤC HỒI NGUYÊN TRẠNG 100% ĐOẠN AI GOOGLE GEMINI TỪ FILE GỐC CỦA THẦY
+                                        # BẢO LƯU 100% ĐOẠN AI GOOGLE GEMINI TỪ FILE GỐC CỦA THẦY
                                         # ==============================================================
                                         for key_sach in keys_luot_nay:
                                             if not key_sach.startswith("AIza"):
@@ -461,7 +541,6 @@ elif st.session_state.get('current_view') == "teacher_view":
                                             headers = {'Content-Type': 'application/json'}
                                             payload = {"contents": [{"parts": [{"text": prompt}]}]}
                                             
-                                            # GỌI CHÍNH XÁC gemini-2.5-flash
                                             model = "gemini-2.5-flash"
                                             try:
                                                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key_sach}"
@@ -575,7 +654,7 @@ elif st.session_state.get('current_view') == "admin_view":
                             c_del1, c_del2 = st.columns([5, 1])
                             c_del1.caption(f"**Rủi ro AI:** {ca.get('muc_do_rui_ro','')}")
                             
-                            # NÚT XÓA CA TƯ VẤN (ADMIN CÓ THỂ XÓA BẤT KỲ CA NÀO)
+                            # NÚT XÓA CA TƯ VẤN
                             if c_del2.button("🗑️ Xóa ca này", key=f"del_{ma_ca}", type="primary"):
                                 del st.session_state['database'][ma_ca]
                                 luu_du_lieu_len_may()
@@ -611,7 +690,6 @@ elif st.session_state.get('current_view') == "admin_view":
                     du_lieu_xuat = [{"Mã Hồ Sơ": k, "Thời gian": v.get('thoi_gian', ''), "Lớp": v.get('lop', ''), "Rủi ro (AI)": v.get('muc_do_rui_ro', ''), "Trạng thái": v.get('trang_thai', '')} for k, v in st.session_state['database'].items()]
                     st.download_button("📥 Tải File Báo Cáo CSV", data=pd.DataFrame(du_lieu_xuat).to_csv(index=False).encode('utf-8-sig'), file_name="Bao_Cao.csv", mime="text/csv", type="primary")
 
-            # TAB MỚI: CÀI ĐẶT MÃ BẢO MẬT
             elif menu_admin == "⚙️ Cài đặt Hệ thống":
                 st.write("#### ⚙️ Cài đặt Mã bảo mật dành cho Học sinh")
                 st.info("Mã bảo mật giúp ngăn chặn người lạ hoặc học sinh spam tin nhắn rác vào hệ thống.")
